@@ -1,0 +1,27 @@
+# rndrSBC - true runtime dependencies only. EXACT VERSIONS PINNED to match the
+# wheels currently bundled in vendor/deps/ so build_vendor_deps.py reproduces
+# byte-identical bundles for the offline self-contained runtime.
+#
+# Verified against the codebase: pillow, requests, werkzeug. Flask is NOT
+# required (the platform uses Python's stdlib http.server for the dashboard).
+#
+# NOTE: qrcode has no vendored wheel in vendor/deps/ yet — it is a soft dep
+# (ico/registry QR tiles). Keep it pinned here so a full bundle regenerates it;
+# the offline runtime falls back gracefully when it is absent.
+Pillow==12.3.0
+requests==2.34.2
+werkzeug==3.1.8
+qrcode[pil]==8.2
+
+# Transitive pins (brought in by the direct deps above). These must match the
+# wheels in vendor/deps/ so the offline bundle stays reproducible.
+certifi==2026.7.22
+charset-normalizer==3.5.1
+idna==3.19
+markupsafe==3.0.3
+urllib3==2.7.0
+
+# Optional, Pi-only hardware deps (import-guarded; platform runs in
+# simulator/virtual mode when absent) - NOT installed by default:
+#   spidev
+#   RPi.GPIO

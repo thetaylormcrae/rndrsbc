@@ -1,0 +1,99 @@
+name: Test
+on: [push, pull_request]
+jobs:
+  unit:
+    name: Unit test suite (hard gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Install runtime deps
+        run: python -m pip install --quiet -r requirements.txt
+      - name: Install pytest
+        run: python -m pip install --quiet pytest
+      - name: Run unit tests
+        run: python -m pytest tests/ -q
+
+  doctor:
+    name: Doctor must pass (hard gate)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Install runtime deps
+        run: python -m pip install --quiet -r requirements.txt
+      - name: Run doctor — FAIL on any fatal verdict
+        run: |
+          python -m rndrsbc.doctor --json > /tmp/doctor.json || exit 1
+          # Abort CI if any check reported a "fail" status (except hardware,
+          # which legitimately warns off-Pi).
+          python - <<'PY'
+          import json
+          data = json.load(open("/tmp/doctor.json"))
+          fatal = [
+              c for c in data["checks"]
+              if c.get("status") == "fail" and c.get("group") != "platform"
+          ]
+          if fatal:
+              for c in fatal:
+                  print("DOCTOR FAIL:", c)
+              raise SystemExit(1)
+          print(f"doctor: {len(data['checks'])} checks, no fatal verdicts")
+          PY
+
+  wheel-smoke:
+    name: Built wheel imports cleanly
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Install runtime deps
+        run: python -m pip install --quiet -r requirements.txt
+      - name: Build wheel
+        run: |
+          python -m pip install --quiet --upgrade build
+          python -m build --no-isolation
+      - name: Install wheel into a CLEAN dir and smoke-test it
+        run: |
+          WH=$(ls dist/*.whl | head -1)
+          python -m pip install --quiet --target=/tmp/wheel_smoke "$WH"
+          PYTHONPATH=/tmp/wheel_smoke python - <<'PY'
+          # Deep import of the real modules the platform ships (core, displays,
+          # server, widgets) — catches a stale/truncated wheel at CI time.
+          from rndrsbc import doctor, _registry_cli, _update  # noqa: F401
+          import core.oauth, core.pipeline, core.panel_health   # noqa: F401
+          import core.migrations, core.canvas                    # noqa: F401
+          import displays.virtual, displays.waveshare             # noqa: F401
+          import server.scheduler, server.onboarding             # noqa: F401
+          import widgets.clock.widget                            # noqa: F401
+          from core.pipeline import compute_dirty_rects          # noqa: F401
+          print("wheel smoke OK: all shipped modules import from wheel")
+          PY
+
+  bench:
+    name: Render performance gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - name: Install runtime deps
+        run: python -m pip install --quiet -r requirements.txt
+      - name: Run render benchmark (clock @ 800x480, 40 iter)
+        run: |
+          python3 bench/bench_render.py clock 800 480 40 > /tmp/bench.json
+          python - <<'PY'
+          import json
+          b = json.load(open("/tmp/bench.json"))
+          p99 = b["render_ms"]["p99"]
+          print(f"p50={b['render_ms']['p50']}ms  p95={b['render_ms']['p95']}ms  "
+                f"p99={p99}ms  rss_delta={b['rss_kb']['delta_kb']}KB")
+          # Generous tripwire vs the README's 35-60ms claim: catches real
+          # regressions without flaking on a shared-CPU runner.
+          if p99 > 250:
+              raise SystemExit(1)
+          print("bench: PASS")
+          PY

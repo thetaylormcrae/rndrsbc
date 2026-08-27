@@ -1,0 +1,27 @@
+# Runtime state (self-contained mode) — gitignored, survives only locally
+/data/
+/config.json
+/.claim_token
+/live_*.png
+/test_*.png
+/build/
+/*.egg-info/
+/dist/
+__pycache__/
+*.pyc
+
+# Secrets — must NEVER be committed (OAuth token store, mode 600)
+/secrets/
+
+# Python test runner cache
+/.pytest_cache/
+
+# Benchmark output artifacts (CI perf reports)
+/bench/reports/
+
+# Vendored wheels are reproducible outputs of build_vendor_deps.py from the
+# pinned requirements.txt — keep the manifest, not the 32MB binaries.
+/vendor/deps/_extracted/
+/vendor/deps/*.whl
+/vendor/deps/*.tar.gz
+/vendor/deps/*.zip

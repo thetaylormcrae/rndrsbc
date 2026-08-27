@@ -1,0 +1,17 @@
+{
+  "_comment": "rndrSBC default configuration. Copy to config.json (or let the deployment scaffold create it) then adjust.",
+  "display": {
+    "driver": "virtual",
+    "model": "epd7in3f",
+    "orientation": 0
+  },
+  "device": {
+    "name": "rndrSBC Frame",
+    "language": "en",
+    "timezone": "UTC"
+  },
+  "active_playlist": "default",
+  "playlists": {
+    "default": ["weather", "network", "calendar", "photo_frame", "system_stats"]
+  }
+}

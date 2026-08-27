@@ -1,0 +1,33 @@
+# rndrSBC - systemd unit (OPTIONAL: only for auto-start on boot).
+# This file is a relocatable TEMPLATE. The platform runs fine with just
+# `python3 main.py` (or `python3 main.py --daemon`) and does NOT require
+# systemd. Use this only if you want rndrSBC to start automatically at boot.
+#
+# Install (after adjusting the two __PATHS__):
+#   sudo cp rndrSBC.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now rndrSBC
+#
+# NOTE: replace __INSTALL_DIR__ with the absolute path to the package folder
+# (the one containing main.py) and __USER__ with the user that owns it.
+
+[Unit]
+Description=rndrSBC E-Paper Display
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=__USER__
+WorkingDirectory=__INSTALL_DIR__
+ExecStart=/usr/bin/env python3 __INSTALL_DIR__/main.py 8080
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+
+# Optional hardening (adjust if photo uploads / SPI access are blocked)
+ProtectSystem=full
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

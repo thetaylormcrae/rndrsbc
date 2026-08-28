@@ -26,9 +26,19 @@ jobs:
         run: python -m pip install --quiet -r requirements.txt
       - name: Run doctor — FAIL on any fatal verdict
         run: |
-          python -m rndrsbc.doctor --json > /tmp/doctor.json || exit 1
-          # Abort CI if any check reported a "fail" status (except hardware,
-          # which legitimately warns off-Pi).
+          # config.json is gitignored, so a fresh checkout has none; "seed" one
+          # from the template or the doctor's config.exists check would report
+          # "fail" (expected pre-provisioning) and trip a gate prematurely.
+          cp config.template.json config.json
+          # Don't gate on the doctor's raw exit code: it exits non-zero on any
+          # warning/fail, including the platform.hardware "warn" (no Pi GPIO on
+          # a GitHub runner). The parser below is the authoritative gate.
+          set +e
+          python -m rndrsbc.doctor --json > /tmp/doctor.json
+          doctor_code=$?
+          set -e
+          echo "doctor exit code: $doctor_code (informational only — parser below is the gate)"
+          # Abort CI if any non-platform check reported a "fail" status.
           python - <<'PY'
           import json
           data = json.load(open("/tmp/doctor.json"))

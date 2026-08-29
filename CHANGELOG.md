@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.6.2 (2026-08-29)
+
+### Bug Fixes
+
+- **display**: Clamp Inky saturation to [0.1, 1.0]
+  ([`d426ee8`](https://github.com/thetaylormcrae/rndrsbc/commit/d426ee833fc5a1767f94404768da46cf6a68e7ce))
+
+
 ## v0.6.1 (2026-08-29)
 
 ### Bug Fixes

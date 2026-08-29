@@ -11,6 +11,44 @@ from displays.base import BaseDisplay
 logger = logging.getLogger("rndrSBC.inky")
 
 
+def _patch_inky_spectra6():
+    """Fix upstream Pimoroni bug (issue #258) in inky_e673 / inky_e640 where _send_command does not chunk SPI data."""
+    try:
+        from inky import inky_e673, inky_e640
+        from gpiod.line import Value
+        import time
+
+        _SPI_CHUNK_SIZE = 4096
+
+        def _fixed_send_command(self, command, data=None):
+            self._gpio.set_value(self.cs_pin, Value.INACTIVE)
+            self._gpio.set_value(self.dc_pin, Value.INACTIVE)
+            time.sleep(0.01)
+            try:
+                self._spi_bus.xfer3([command])
+            except Exception:
+                self._spi_bus.xfer([command])
+
+            if data is not None:
+                self._gpio.set_value(self.dc_pin, Value.ACTIVE)
+                for x in range(((len(data) - 1) // _SPI_CHUNK_SIZE) + 1):
+                    offset = x * _SPI_CHUNK_SIZE
+                    self._spi_bus.xfer(data[offset:offset + _SPI_CHUNK_SIZE])
+
+            self._gpio.set_value(self.cs_pin, Value.ACTIVE)
+            self._gpio.set_value(self.dc_pin, Value.INACTIVE)
+
+        inky_e673.Inky._send_command = _fixed_send_command
+        inky_e640.Inky._send_command = _fixed_send_command
+        logger.debug("[Inky] Applied upstream SPI chunking patch for Spectra 6 displays.")
+    except Exception:
+        pass
+
+
+# Apply patch on module import
+_patch_inky_spectra6()
+
+
 class InkyDisplay(BaseDisplay):
     """Driver wrapper for Pimoroni Inky Impression & Inky Frame e-Paper displays."""
 
@@ -39,6 +77,7 @@ class InkyDisplay(BaseDisplay):
         self.saturation = saturation
         self._inky = None
 
+        _patch_inky_spectra6()
         base_dims = self._PRESETS.get(model, (800, 480))
         self.width, self.height = base_dims
         self.init_hardware()
@@ -77,6 +116,8 @@ class InkyDisplay(BaseDisplay):
             return None
 
     def init_hardware(self):
+        _patch_inky_spectra6()
+
         # 1. If explicit model requested, instantiate directly
         if self.model and self.model not in ("auto", "impression_7_3"):
             try:

@@ -4,6 +4,8 @@ Driver for Pimoroni Inky Impression (4.0", 5.7", 7.3") and Inky pHAT/wHAT panels
 """
 
 import logging
+import os
+import time
 from PIL import Image
 from displays.base import BaseDisplay
 from core.color import quantize_image
@@ -138,28 +140,58 @@ class InkyDisplay(BaseDisplay):
     def update(self, canvas: Image.Image, dirty_rects: list = None):
         """Quantizes (if needed) and flushes the buffer to Inky hardware."""
         image = canvas
-        
+
+        # ---- DEBUG: capture & report exactly what we're about to drive ----
+        logger.info(
+            "[Inky-debug] update() called: canvas size=%s mode=%s orientation=%d",
+            canvas.size, canvas.mode, self.orientation,
+        )
+        if os.environ.get("RNDRSBC_INKY_DUMP"):
+            try:
+                dump = os.environ["RNDRSBC_INKY_DUMP"]
+                os.makedirs(dump, exist_ok=True)
+                p = os.path.join(dump, "inky-input-%d.png" % int(time.time()))
+                canvas.convert("RGB").save(p)
+                logger.info("[Inky-debug] dumped pre-driver canvas to %s", p)
+            except Exception as e:  # pragma: no cover - debug only
+                logger.warning("[Inky-debug] dump failed: %s", e)
+
         # Ensure image matches logical resolution
         logical_res = self.get_resolution()
         if image.size != logical_res:
+            logger.info(
+                "[Inky-debug] resizing buffer %s -> %s (logical res)",
+                image.size, logical_res,
+            )
             image = image.resize(logical_res, Image.Resampling.LANCZOS)
 
         if self._inky is not None:
             phys_w, phys_h = getattr(self._inky, "resolution", (self.width, self.height))
-            
+            logger.info("[Inky-debug] physical resolution = %s", (phys_w, phys_h))
+
             # If physical panel is portrait (e.g. 480x800) and logical image is landscape (800x480),
             # Pimoroni inky set_image expects physical orientation. Rotate 90 deg to fit.
             if phys_w < phys_h and image.width > image.height:
+                logger.info("[Inky-debug] auto-rotating 90deg (portrait panel, landscape buffer)")
                 image = image.rotate(90, expand=True)
             elif phys_w > phys_h and image.width < image.height:
+                logger.info("[Inky-debug] auto-rotating 90deg (landscape panel, portrait buffer)")
                 image = image.rotate(90, expand=True)
 
             # Apply any additional user rotation/orientation
             if self.orientation != 0:
+                logger.info("[Inky-debug] applying orientation rotation=%s", self.orientation)
                 image = image.rotate(-self.orientation, expand=True)
 
             if image.size != (phys_w, phys_h):
+                logger.info("[Inky-debug] resizing buffer %s -> %s (physical res)",
+                            image.size, (phys_w, phys_h))
                 image = image.resize((phys_w, phys_h), Image.Resampling.LANCZOS)
+
+            logger.info(
+                "[Inky-debug] final buffer -> set_image: size=%s mode=%s",
+                image.size, image.mode,
+            )
 
             self._inky.set_image(image)
             self._inky.show()

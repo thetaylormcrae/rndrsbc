@@ -2,6 +2,16 @@
 
 <!-- version list -->
 
+## v0.6.5 (2026-08-29)
+
+### Bug Fixes
+
+- **inky**: Quantize to Spectra 6 primaries in software before set_image() (P-mode path) - kills
+  Pimoroni's inverted SATURATED/DESATURATED palette blend that caused muddy/inconsistent colors;
+  output now deterministic primaries
+  ([`74259f4`](https://github.com/thetaylormcrae/rndrsbc/commit/74259f4050e16756264a4d2e3f5ba4ad460277cd))
+
+
 ## v0.6.4 (2026-08-29)
 
 ### Bug Fixes

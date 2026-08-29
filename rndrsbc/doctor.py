@@ -139,6 +139,15 @@ def check_display_paths():
     rows = [
         ("deploy_home", str(paths.DEPLOY_ROOT), "ok"),
     ]
+    # Leftover one-time onboarding claim token. The claim token is short-lived
+    # and the server mints a fresh one on demand, so its continued presence in the
+    # deployment root is pure hygiene debt (and a plaintext credential that leaked
+    # once). Warn until it's cleared so Rotation is caught, not remembered.
+    claim_path = os.path.join(paths.DEPLOY_ROOT, ".claim_token")
+    if os.path.exists(claim_path):
+        rows.append(("claim_token_leftover", claim_path, "warn"))
+    else:
+        rows.append(("claim_token_leftover", "none", "ok"))
     # writable check
     home_missing = not os.path.isdir(paths.DEPLOY_ROOT)
     probe = os.path.join(paths.DEPLOY_ROOT, "doctor.probe")
@@ -226,6 +235,7 @@ RECOMMENDATIONS = {
     "display.virtual":  "install the configured display driver (wheel extra or apt) then `rndrsbc doctor`",
     "display.driver":   "set display.driver to a supported name in config.json (virtual / inky_impression …)",
     "deploy_writable":  "make the deploy home writable:\n     mkdir -p $RNDRSBC_HOME && chmod -R u+w $RNDRSBC_HOME\n     or set RNDRSBC_HOME to a writable dir",
+    "claim_token_leftover": "remove the stale one-time onboarding claim token:\n     rm $RNDRSBC_HOME/.claim_token   # server re-mints a fresh one on demand",
     "render.smoke":     "display driver rejected a config key or failed to render:\n     check display.* keys in config.json / run `rndrsbc doctor --render` after fixing",
     "widget-load":      "a widget failed to import — run `rndrsbc list` and `rndrsbc remove <id>`",
 }

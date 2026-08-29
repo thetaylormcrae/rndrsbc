@@ -135,6 +135,7 @@ def main():
     driver_name = disp_cfg.get("driver", "auto")
     orientation = disp_cfg.get("orientation", disp_cfg.get("rotation", 0))
     saturation = float(disp_cfg.get("saturation", 0.5))
+    saturation = max(0.1, min(1.0, saturation))  # clamp to sane Inky range
     inky_kw = dict(
         orientation=orientation,
         saturation=saturation,

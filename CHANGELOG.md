@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.6.3 (2026-08-29)
+
+### Bug Fixes
+
+- **server**: Bind ProductionHandler to QuietServer so GET/POST are handled (was 501 Unsupported
+  Method) and suppress socket disconnect tracebacks
+  ([`1741619`](https://github.com/thetaylormcrae/rndrsbc/commit/1741619864d4b4ffadc14b1d99c378e41cda6aed))
+
+
 ## v0.6.2 (2026-08-29)
 
 ### Bug Fixes

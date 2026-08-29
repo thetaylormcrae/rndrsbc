@@ -1,28 +1,22 @@
-name: Semantic Release
+name: Semantic Release + Publish
 
-# Version is derived from Conventional Commits, not edited by hand.
-# On merge to main, Python Semantic Release:
-#   * analyzes commits since the last tag
-#   * computes the correct semver segment (major / minor / patch) from:
-#       - BREAKING CHANGE / feat!  -> major
-#       - feat:                    -> minor
-#       - fix: and other types     -> patch
-#   * bumps __version__ in core/__init__.py
-#   * regenerates CHANGELOG.md from the release notes
-#   * commits those two, then cuts + pushes the vX.Y.Z tag
-# The tag fires publish.yml, which builds and uploads exactly that version.
+# Version is derived from Conventional Commits, and the wheel is built + pushed
+# to PyPI IN THE SAME JOB -- no separate publish workflow that depends on an
+# Actions-created tag re-triggering GitHub.
 #
-# No hand-cut tags: the tag is generated from the computed version, so a tag
-# can never disagree with core/__init__.py again.
-
+# Why inline: the old setup cut a vX.Y.Z tag in release.yml and relied on that
+# tag push to fire publish.yml. GitHub suppresses workflow triggers caused by a
+# push originating inside another Actions run, so the Actions-created tags for
+# 0.7.0/0.7.1 never fired publish.yml and those releases never reached PyPI
+# (while hand-pushed 0.6.x tags did). Publishing inline removes that whole class
+# of failure: tagging and publishing are sequential steps in one job.
+#
+# Builds are pure-Python (py3-none-any), so one job builds both sdist + wheel.
 on:
   push:
     branches: ["main"]
-  # shared-jobs trick: the "release" job runs on a tag only in publish.yml;
-  # here we prevent PSR from reprocessing its own tag push below.
 
 jobs:
-  # PR gate: enforce Conventional Commit titles so PSR can categorize reliably.
   conventional-lint:
     name: Enforce Conventional Commits
     if: github.event_name == 'pull_request'
@@ -38,39 +32,56 @@ jobs:
           commit-title-match: 'true'
           ignore-merge-commits: 'true'
 
-  # Release on merge to main: semver is computed by PSR.
   release:
-    name: Semantic Release (push to main)
+    name: Semantic Release + Publish to PyPI
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    concurrency: release  # one release at a time; tag push won't re-trigger
+    concurrency: release        # one release at a time
     permissions:
-      contents: write     # PSR commits version bump + CHANGELOG and pushes tag
+      contents: write           # PSR bumps version + pushes the vX.Y.Z tag
+      id-token: write           # trusted PyPI publishing via OIDC
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          # PSR needs access to the tag it creates *and* a token able to push.
           persist-credentials: true
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Install python-semantic-release
-        run: pip install python-semantic-release
+      - name: Install release + build tooling
+        run: |
+          python -m pip install --upgrade pip build
+          pip install python-semantic-release
 
+      # Cut + push the vX.Y.Z tag (bumps core/__init__.py, regenerates CHANGELOG).
+      # Publish below runs inline so nothing depends on this tag re-triggering
+      # another workflow.
       - name: Run semantic release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # Use `version`, not `publish`: `publish` bails when the most recent
-        # tag (e.g. v0.2.0) has no corresponding GitHub Release object
-        # ("No release corresponds to tag ... can't upload dists"), so it
-        # silently exits without bumping or tagging. `version` bumps
-        # core/__init__.py, regenerates CHANGELOG.md, and cuts + pushes the
-        # vX.Y.Z tag, which fires publish.yml to build/upload that version.
         run: semantic-release -v version
 
-      - name: Report new version
+      # If any new identifier was just bumped, this creates the latest dist.
+      - name: Build sdist + wheel
+        run: python -m build
+
+      - name: Sanity-check the wheel imports
         run: |
-          echo "Release tag created by PSR; publish.yml will build it."
+          WH=$(ls dist/*.whl | head -1)
+          python -m pip install --quiet --target=/tmp/wheel_smoke "$WH"
+          PYTHONPATH=/tmp/wheel_smoke python - <<'PY'
+          from rndrsbc import doctor, _registry_cli, _update  # noqa: F401
+          import core.oauth, core.pipeline, core.panel_health   # noqa: F401
+          import core.migrations, core.canvas                    # noqa: F401
+          import displays.virtual, displays.waveshare             # noqa: F401
+          import server.scheduler, server.onboarding             # noqa: F401
+          import widgets.clock.widget                            # noqa: F401
+          print("wheel imports OK")
+          PY
+
+      - name: Publish to PyPI (trusted publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true   # idempotent re-run safe

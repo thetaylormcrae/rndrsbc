@@ -1,11 +1,17 @@
-name: Publish rndrsbc to PyPI
+name: Publish rndrsbc to PyPI (manual)
 
-# Build + upload to PyPI on a version tag (v*). Wheels are pure-Python
-# (py3-none-any), so a single job builds both sdist and wheel — no matrix.
+# Fallback publisher. The PRIMARY release path builds+uploads INLINE inside
+# release.yml, so the publish can never be skipped by GitHub suppressing an
+# Actions-created tag push (the bug that kept 0.7.0/0.7.1 off PyPI).
+# This workflow exists only for manual/hands-on re-publishing:
+#   * workflow_dispatch  -> re-publish the current default branch
+#   * push: tags v*      -> re-publish if someone pushes a tag by hand
+#
+# Wheels are pure-Python (py3-none-any), so a single job builds sdist + wheel.
 on:
+  workflow_dispatch: {}
   push:
     tags: ["v*"]
-  workflow_dispatch:        # manual re-publish of the current state
 
 jobs:
   publish:
@@ -24,19 +30,10 @@ jobs:
         run: python -m pip install --upgrade build
 
       - name: Build sdist + wheel
-        run: |
-          # Isolated build: lets hatchling resolve from [build-system].requires.
-          # --no-isolation previously failed because ``hatchling`` isn't installed
-          # in the runner env and the backend couldn't be imported.
-          python -m build
+        run: python -m build
 
       - name: Sanity-check the wheel imports
         run: |
-          # Install into a clean dir and deep-import the real modules the platform
-          # ships. NOTE: do NOT use ``rndrsbc --help`` here — __main__ has no
-          # --help handler, so it falls through to Frame mode and boots the whole
-          # production server (blocking). Deep imports verify the wheel without
-          # launching the runtime.
           WH=$(ls dist/*.whl | head -1)
           python -m pip install --quiet --target=/tmp/wheel_smoke "$WH"
           PYTHONPATH=/tmp/wheel_smoke python - <<'PY'
@@ -52,4 +49,4 @@ jobs:
       - name: Publish to PyPI (trusted publishing)
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          skip-existing: true   # idempotent tag re-publish
+          skip-existing: true

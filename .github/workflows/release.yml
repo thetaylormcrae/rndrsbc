@@ -1,112 +1,70 @@
-name: Release (auto-detect version from file)
+name: Semantic Release
 
-# The release version is derived from core/__init__.py, never from a hand-cut
-# tag. This fixes the drift bug where "creating a release" didn't update the
-# inner version, so PyPI would reject the built artifact (same version
-# re-uploaded). Two responsibilities:
-#   1. PR gate  — detect the inner version a PR will ship and report whether it
-#      actually bumps the published package (so a release must carry a bump).
-#   2. Push tag — on merge to main, read __version__ from the file and create
-#      the v<version> tag automatically. publish.yml then fires on that tag.
-# A hand-cut tag that disagrees with core/__init__.py is now impossible: the
-# tag is generated FROM the file.
+# Version is derived from Conventional Commits, not edited by hand.
+# On merge to main, Python Semantic Release:
+#   * analyzes commits since the last tag
+#   * computes the correct semver segment (major / minor / patch) from:
+#       - BREAKING CHANGE / feat!  -> major
+#       - feat:                    -> minor
+#       - fix: and other types     -> patch
+#   * bumps __version__ in core/__init__.py
+#   * regenerates CHANGELOG.md from the release notes
+#   * commits those two, then cuts + pushes the vX.Y.Z tag
+# The tag fires publish.yml, which builds and uploads exactly that version.
+#
+# No hand-cut tags: the tag is generated from the computed version, so a tag
+# can never disagree with core/__init__.py again.
 
 on:
-  pull_request:
-    branches: ["main"]
   push:
     branches: ["main"]
+  # shared-jobs trick: the "release" job runs on a tag only in publish.yml;
+  # here we prevent PSR from reprocessing its own tag push below.
 
 jobs:
-  # ---- PR gate: report the version this PR will publish vs what's live ----
-  release-readiness:
-    name: Version readiness (PR)
+  # PR gate: enforce Conventional Commit titles so PSR can categorize reliably.
+  conventional-lint:
+    name: Enforce Conventional Commits
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.ver.outputs.version }}
-      bump: ${{ steps.ver.outputs.bump }}
+    permissions:
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: CondeNast/conventional-pull-request-action@v0.2.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          commit-title-match: 'true'
+          ignore-merge-commits: 'true'
+
+  # Release on merge to main: semver is computed by PSR.
+  release:
+    name: Semantic Release (push to main)
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency: release  # one release at a time; tag push won't re-trigger
+    permissions:
+      contents: write     # PSR commits version bump + CHANGELOG and pushes tag
     steps:
       - uses: actions/checkout@v4
         with:
-          # For PRs, check the merge result so we judge the combined tree, not
-          # just the head branch in isolation.
-          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+          fetch-depth: 0
+          # PSR needs access to the tag it creates *and* a token able to push.
+          persist-credentials: true
 
-      - name: Read inner version from file
-        id: ver
-        run: |
-          V=$(python3 -c 'import re;print(re.search(r"__version__\s*=\s*\"([^\"]+)\"",open("core/__init__.py").read()).group(1))')
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-          echo "Inner version (core/__init__.py): $V"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
 
-      - name: Compare against published PyPI version
-        id: compare
-        run: |
-          set -e
-          V="${{ steps.ver.outputs.version }}"
-          LIVE=$(curl -s https://pypi.org/pypi/rndrsbc/json | python3 -c 'import sys,json;print(json.load(sys.stdin)["info"]["version"])')
-          echo "Live on PyPI: $LIVE"
-          python3 - "$V" "$LIVE" <<'PY'
-          import sys
-          from packaging.version import Version  # available on ubuntu-latest runners
-          v = Version(sys.argv[1]); live = Version(sys.argv[2])
-          if v > live:
-              print(f"READY: file version {v} bumps published {live} (release-worthy)")
-          elif v == live:
-              print(f"NOT-A-BUMP: file version {v} == published {live}. A release PR must bump core/__init__.py __version__.")
-          else:
-              print(f"BEHIND: file version {v} is lower than published {live} — can't release and would be rejected.")
-          PY
+      - name: Install python-semantic-release
+        run: pip install python-semantic-release
 
-      - name: Gate on release intent
+      - name: Run semantic release
         env:
-          BUMP: ${{ steps.ver.outputs.version }}
-        run: |
-          # Non-blocking reporter for feature PRs (which legitimately keep the
-          # version unchanged). Clear signal only — CI correctness is gated by
-          # test.yml. A release PR must ship a __version__ bump in
-          # core/__init__.py; this surfaces that verdict in the run log.
-          echo "Release readiness: $(git log -1 --format=%h) carries inner version $BUMP"
-          echo "(Automated tag will be created from this version on merge to main.)"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: semantic-release -v publish
 
-  # ---- Merge-to-main: auto-create the release tag from the file ----
-  auto-tag:
-    name: Auto-tag release (push to main)
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write   # needs to push the v<version> tag
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Read inner version from file
-        id: ver
+      - name: Report new version
         run: |
-          V=$(python3 -c 'import re;print(re.search(r"__version__\s*=\s*\"([^\"]+)\"",open("core/__init__.py").read()).group(1))')
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-          echo "Inner version: $V"
-
-      - name: Create and push release tag (if new)
-        id: tag
-        run: |
-          set -e
-          V="${{ steps.ver.outputs.version }}"
-          TAG="v$V"
-          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists — skipping (no new release)."
-            echo "created=false" >> "$GITHUB_OUTPUT"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            # Tag is taken FROM the file version, so it can't drift from it.
-            git tag -a "$TAG" -m "Release $V (auto-detected from core/__init__.py)"
-            git push origin "$TAG"
-            echo "created=true" >> "$GITHUB_OUTPUT"
-            echo "Created + pushed tag $TAG"
-          fi
-
-      - name: Release summary
-        if: steps.tag.outputs.created == 'true'
-        run: |
-          echo "Pushed v${{ steps.ver.outputs.version }} — publish.yml will now build and upload this version."
+          echo "Release tag created by PSR; publish.yml will build it."

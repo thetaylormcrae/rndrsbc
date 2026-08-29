@@ -42,6 +42,20 @@ include = [
     "/pyproject.toml", "/README.md",
 ]
 
+[tool.semantic_release]
+# Version source is core/__init__.py (hatch reads it via tool.hatch.version.path).
+# PSR writes the computed semver bump straight into that file.
+version_variables = ["core/__init__.py:__version__"]
+build_command = ""
+commit_parser = "conventional"
+
+[tool.semantic_release.branches]
+main = { match = "main" }
+
+[tool.semantic_release.changelog]
+exclude_commit_patterns = ["^(docs|chore|refactor|style|test|build|ci):"]
+mode = "update"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"

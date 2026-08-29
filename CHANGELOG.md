@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.3.1 (2026-08-29)
+
+### Bug Fixes
+
+- **migrations**: Tolerate list-shaped playlists in _v1_to_v2
+  ([`20b2dd4`](https://github.com/thetaylormcrae/rndrsbc/commit/20b2dd4d20bef89282577595180cc915e906bedf))
+
+
 ## v0.3.0 (2026-08-29)
 
 ### Bug Fixes

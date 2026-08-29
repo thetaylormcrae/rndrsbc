@@ -49,6 +49,12 @@ version_variables = ["core/__init__.py:__version__"]
 build_command = ""
 commit_parser = "conventional"
 
+# Keep releasing on the 0.x line rather than jumping straight to 1.0.0.
+# - allow_zero_version: true -> don't force a MAJOR bump just because major == 0
+# - major_on_zero: true -> a breaking change on 0.x bumps the minor (0.2.0 -> 0.3.0)
+allow_zero_version = true
+major_on_zero = true
+
 [tool.semantic_release.branches]
 main = { match = "main" }
 

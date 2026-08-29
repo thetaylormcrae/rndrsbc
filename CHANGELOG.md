@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.4.6 (2026-08-29)
+
+### Bug Fixes
+
+- **inky**: Set border black on initialization matching InkyPi
+  ([`4d33f62`](https://github.com/thetaylormcrae/rndrsbc/commit/4d33f621464a2924ca0f46b44de6e3af9808fd6d))
+
+
 ## v0.4.5 (2026-08-29)
 
 ### Bug Fixes

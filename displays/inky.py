@@ -37,6 +37,7 @@ class InkyDisplay(BaseDisplay):
         self._inky = None
 
         self.width, self.height = self._PRESETS.get(model, (800, 480))
+        self.init_hardware()
 
     def get_resolution(self) -> tuple[int, int]:
         if self.orientation in [90, 270]:
@@ -72,12 +73,54 @@ class InkyDisplay(BaseDisplay):
         return "impression_7_3"
 
     def init_hardware(self):
+        # 1. Try I2C EEPROM auto-detection first
         try:
             from inky.auto import auto
             self._inky = auto()
-            logger.info(f"Connected to Inky hardware: {self._inky.resolution}")
+            if hasattr(self._inky, "resolution"):
+                self.width, self.height = self._inky.resolution
+            logger.info(f"[Inky] Connected to Inky hardware via auto-detect: {self.width}x{self.height}")
+            return
         except Exception as e:
-            logger.warning(f"[Inky] Hardware not detected ({e}). Running in simulation mode.")
+            logger.debug(f"[Inky] inky.auto() did not initialize ({e}), falling back to model '{self.model}'")
+
+        # 2. Fall back to direct hardware instantiation based on model
+        try:
+            if self.model in ("impression_7_3", "epd7in3f", "7colour", "impressions73"):
+                # Try AC073TC1A (newer Inky Impression 7.3"), E673 (Spectra 7.3"), then UC8159 (Impression 7.3")
+                try:
+                    from inky.inky_ac073tc1a import Inky as InkyAC073TC1A
+                    self._inky = InkyAC073TC1A(resolution=(800, 480))
+                except Exception:
+                    try:
+                        from inky.inky_e673 import Inky as InkyE673
+                        self._inky = InkyE673(resolution=(800, 480))
+                    except Exception:
+                        from inky.inky_uc8159 import Inky as InkyUC8159
+                        self._inky = InkyUC8159(resolution=(800, 480))
+            elif self.model in ("impression_5_7", "impressions"):
+                from inky.inky_uc8159 import Inky as InkyUC8159
+                self._inky = InkyUC8159(resolution=(600, 448))
+            elif self.model in ("impression_4_0", "spectra40"):
+                try:
+                    from inky.inky_e640 import Inky as InkyE640
+                    self._inky = InkyE640(resolution=(600, 400))
+                except Exception:
+                    from inky.inky_uc8159 import Inky as InkyUC8159
+                    self._inky = InkyUC8159(resolution=(640, 400))
+            elif self.model in ("what", "whatssd1683"):
+                from inky.what import InkyWHAT
+                self._inky = InkyWHAT("red")
+            elif self.model == "phat":
+                from inky.phat import InkyPHAT
+                self._inky = InkyPHAT("red")
+            
+            if self._inky is not None:
+                if hasattr(self._inky, "resolution"):
+                    self.width, self.height = self._inky.resolution
+                logger.info(f"[Inky] Connected to Inky hardware ({self.model}): {self.width}x{self.height}")
+        except Exception as e2:
+            logger.warning(f"[Inky] Hardware initialization failed ({e2}). Running in simulation mode.")
             self._inky = None
 
     def update(self, canvas: Image.Image, dirty_rects: list = None):

@@ -271,21 +271,24 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1.5">Driver Backend</label>
             <select id="cfg-driver" onchange="updateHardwareSettings()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:border-orange-500 focus:outline-none">
-              <option value="virtual">Virtual (Browser Preview)</option>
-              <option value="waveshare">Waveshare SPI Driver</option>
+              <option value="auto">Auto-Detect Display (Recommended)</option>
               <option value="inky">Pimoroni Inky Driver</option>
+              <option value="waveshare">Waveshare SPI Driver</option>
+              <option value="virtual">Virtual (Browser Preview)</option>
               <option value="framebuffer">Linux Framebuffer (/dev/fb0)</option>
             </select>
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1.5">Display Panel Model</label>
             <select id="cfg-model" onchange="updateHardwareSettings()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:border-orange-500 focus:outline-none">
-              <option value="epd7in3f">7.3" 7-Color (800×480)</option>
-              <option value="epd4in0">4.0" Inky Impression (640×400)</option>
-              <option value="epd5in65f">5.65" 7-Color (600×448)</option>
-              <option value="epd7in5_HD">7.5" HD (880×528)</option>
+              <option value="impression_7_3">7.3" Inky Impression (800×480)</option>
+              <option value="impression_5_7">5.7" Inky Impression (600×448)</option>
+              <option value="impression_4_0">4.0" Inky Impression (640×400)</option>
+              <option value="epd7in3f">7.3" 7-Color Waveshare (800×480)</option>
+              <option value="epd5in65f">5.65" 7-Color Waveshare (600×448)</option>
+              <option value="epd7in5_HD">7.5" HD Waveshare (880×528)</option>
               <option value="epd13in3k">13.3" Spectra 6 (1600×1200)</option>
-              <option value="epd2in13_V4">2.13" SBC Hat (250×122)</option>
+              <option value="epd2in13_V4">2.13" Waveshare Hat (250×122)</option>
             </select>
           </div>
           <div class="sm:col-span-2">
@@ -379,6 +382,35 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             <option value="full">Full refresh only (opt-out, max quality/contrast)</option>
           </select>
           <p class="text-[10px] text-slate-500 mt-1.5">Auto: B/W e-paper, LCD &amp; OLED partial-refresh automatically; 7-color/BWR panels always full-refresh. Full: forces full frame every refresh.</p>
+        </div>
+      </div>
+
+      <!-- Admin Security & Password Settings -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div>
+          <h2 class="font-bold text-base text-slate-100">🔒 Admin Security & Password</h2>
+          <p class="text-xs text-slate-400">Update your dashboard administrator password</p>
+        </div>
+
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1">Current Password</label>
+            <input type="password" id="pwd-current" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:border-orange-500 focus:outline-none" placeholder="••••••••" />
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">New Password (min 8 chars)</label>
+              <input type="password" id="pwd-new" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:border-orange-500 focus:outline-none" placeholder="••••••••" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-400 mb-1">Confirm New Password</label>
+              <input type="password" id="pwd-new-confirm" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:border-orange-500 focus:outline-none" placeholder="••••••••" />
+            </div>
+          </div>
+          <div id="pwd-feedback" class="hidden text-xs font-medium"></div>
+          <button onclick="updatePassword()" class="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 font-semibold text-xs text-white shadow-md shadow-orange-600/30 transition">
+            Update Admin Password
+          </button>
         </div>
       </div>
 
@@ -527,6 +559,52 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     async function logout() {
       await fetch('/api/auth/logout', {method: 'POST'});
       checkAuthStatus();
+    }
+
+    async function updatePassword() {
+      const cur = document.getElementById('pwd-current').value;
+      const p1 = document.getElementById('pwd-new').value;
+      const p2 = document.getElementById('pwd-new-confirm').value;
+      const fb = document.getElementById('pwd-feedback');
+
+      if (!p1 || p1.length < 8) {
+        fb.textContent = "New password must be at least 8 characters long.";
+        fb.className = "text-xs text-rose-400 font-medium";
+        fb.classList.remove('hidden');
+        return;
+      }
+      if (p1 !== p2) {
+        fb.textContent = "New passwords do not match.";
+        fb.className = "text-xs text-rose-400 font-medium";
+        fb.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/auth/password', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({current_password: cur, new_password: p1})
+        });
+        const data = await res.json();
+        if (res.ok) {
+          fb.textContent = "Admin password updated successfully!";
+          fb.className = "text-xs text-emerald-400 font-medium";
+          fb.classList.remove('hidden');
+          document.getElementById('pwd-current').value = '';
+          document.getElementById('pwd-new').value = '';
+          document.getElementById('pwd-new-confirm').value = '';
+          checkAuthStatus();
+        } else {
+          fb.textContent = data.error || "Failed to update password.";
+          fb.className = "text-xs text-rose-400 font-medium";
+          fb.classList.remove('hidden');
+        }
+      } catch (e) {
+        fb.textContent = "Network error updating password.";
+        fb.className = "text-xs text-rose-400 font-medium";
+        fb.classList.remove('hidden');
+      }
     }
 
     async function loadStatus() {
@@ -1420,7 +1498,7 @@ class ProductionHandler(BaseHTTPRequestHandler):
                 self.send_response(400)
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
-                self.wfile.write(b'{"error":"Admin setup has already been completed."}')
+                self.wfile.write(b'{"error":"Admin setup has already been completed. Use Settings or CLI \'rndrsbc set-password\' to change password."}')
                 return
 
             try:
@@ -1486,6 +1564,57 @@ class ProductionHandler(BaseHTTPRequestHandler):
                 return
             except Exception:
                 self.send_response(400); self.end_headers(); return
+
+        # 2b. Password Change / Reset
+        if parsed.path == "/api/auth/password":
+            try:
+                body = json.loads(raw_body.decode("utf-8"))
+                current_pwd = body.get("current_password", "")
+                new_pwd = body.get("new_password", "").strip()
+
+                if len(new_pwd) < 8:
+                    self.send_response(400)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(b'{"error":"New password must be at least 8 characters long."}')
+                    return
+
+                cfg = {}
+                if os.path.exists(self.config_path):
+                    with open(self.config_path, "r") as f:
+                        cfg = json.load(f)
+
+                pwd_hash = cfg.get("admin_password_hash", "")
+
+                # If an admin password already exists, require valid session OR current password
+                if pwd_hash:
+                    if not self._is_authenticated() and not (current_pwd and check_password_hash(pwd_hash, current_pwd)):
+                        self.send_response(401)
+                        self.send_header("Content-Type", "application/json")
+                        self.end_headers()
+                        self.wfile.write(b'{"error":"Current password is required or invalid."}')
+                        return
+
+                new_hash = generate_password_hash(new_pwd, method="pbkdf2:sha256")
+                cfg["admin_password_hash"] = new_hash
+                with open(self.config_path, "w") as f:
+                    json.dump(cfg, f, indent=2)
+
+                token = secrets.token_hex(32)
+                ACTIVE_SESSIONS[token] = {"created_at": time.time(), "user": "admin"}
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Set-Cookie", f"rndrsbc_session={token}; Path=/; HttpOnly; SameSite=Lax")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "ok", "message": "Password updated successfully."}).encode("utf-8"))
+                return
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
+                return
 
         # 3. Logout
         if parsed.path == "/api/auth/logout":

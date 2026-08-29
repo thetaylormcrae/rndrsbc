@@ -142,13 +142,20 @@ def main():
             logger.info(f"[display] Auto-detected Inky panel: {detected}")
             display = InkyDisplay(model=detected, orientation=disp_cfg.get("orientation", 0))
         else:
-            logger.warning("[display] No physical e-paper detected; falling back to virtual display.")
-            from displays.virtual import VirtualDisplay
-            display = VirtualDisplay(
-                width=disp_cfg.get("width", 800),
-                height=disp_cfg.get("height", 480),
-                output_path=resolve("live_screen.png"),
-            )
+            # Also try configured Inky model fallback in case I2C EEPROM auto-detection was unavailable
+            fallback_model = disp_cfg.get("model", "impression_7_3")
+            try_display = InkyDisplay(model=fallback_model, orientation=disp_cfg.get("orientation", 0))
+            if try_display._inky is not None:
+                logger.info(f"[display] Connected to Inky panel via model fallback: {fallback_model}")
+                display = try_display
+            else:
+                logger.warning("[display] No physical e-paper detected; falling back to virtual display.")
+                from displays.virtual import VirtualDisplay
+                display = VirtualDisplay(
+                    width=disp_cfg.get("width", 800),
+                    height=disp_cfg.get("height", 480),
+                    output_path=resolve("live_screen.png"),
+                )
     elif driver_name == "waveshare":
         from displays.waveshare import WaveshareDisplay
         display = WaveshareDisplay(model=disp_cfg.get("model", "epd7in3f"), orientation=disp_cfg.get("orientation", 0))

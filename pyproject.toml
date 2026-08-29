@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-pi = ["RPi.GPIO", "spidev"]
+pi = ["RPi.GPIO", "spidev", "inky", "gpiod", "gpiodevice", "smbus2"]
 dev = ["build", "twine"]
 
 [project.scripts]

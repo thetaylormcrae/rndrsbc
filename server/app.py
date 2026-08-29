@@ -300,6 +300,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
               <option value="270">Portrait Inverted (270°)</option>
             </select>
           </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-400 mb-1.5">Color Saturation (Inky)</label>
+            <input type="number" id="cfg-saturation" min="0.1" max="1" step="0.05" value="0.5" onchange="updateHardwareSettings()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:border-orange-500 focus:outline-none" />
+            <p class="text-[10px] text-slate-500 mt-1">0.1–1.0; higher = more intense color on Inky panels</p>
+          </div>
         </div>
       </div>
 
@@ -626,6 +631,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           document.getElementById('cfg-driver').value = currentConfig.display.driver || 'virtual';
           document.getElementById('cfg-model').value = currentConfig.display.model || 'epd7in3f';
           document.getElementById('cfg-orient').value = currentConfig.display.orientation || 0;
+          document.getElementById('cfg-saturation').value = currentConfig.display.saturation ?? 0.5;
         }
 
         if (currentConfig.quiet_hours) {
@@ -699,7 +705,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       currentConfig.playlists[key] = {
         name: name,
         items: [
-          { widget: "weather", duration_minutes: 15, settings: { location: "New York City", latitude: 40.7128, longitude: -74.0060, units: "imperial", frame: "Corner" } }
+          { widget: "weather", duration_minutes: 15, settings: { location: "New York City", latitude: 40.7128, longitude: -74.0060, units: "imperial", frame: "None" } }
         ]
       };
       selectedPlaylistKey = key;
@@ -746,23 +752,23 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       let newWidget = {
         widget: widgetType,
         duration_minutes: 15,
-        settings: { frame: "Corner" }
+        settings: { frame: "None" }
       };
 
       if (widgetType === "weather") {
-        newWidget.settings = { location: "New York City", latitude: 40.7128, longitude: -74.0060, units: "imperial", frame: "Corner", weatherProvider: "OpenMeteo", displayGraph: true, moonPhase: true, graphIconStep: 3, time_format: "12h" };
+        newWidget.settings = { location: "New York City", latitude: 40.7128, longitude: -74.0060, units: "imperial", frame: "None", weatherProvider: "OpenMeteo", displayGraph: true, moonPhase: true, graphIconStep: 3, time_format: "12h" };
       } else if (widgetType === "calendar") {
-        newWidget.settings = { title: "My Schedule", ics_url: "", first_day_sunday: true, frame: "Corner" };
+        newWidget.settings = { title: "My Schedule", ics_url: "", first_day_sunday: true, frame: "None" };
       } else if (widgetType === "system_stats") {
-        newWidget.settings = { hostname: "rndrSBC Node", frame: "Corner" };
+        newWidget.settings = { hostname: "rndrSBC Node", frame: "None" };
       } else if (widgetType === "onboarding") {
-        newWidget.settings = { title: "Let's set up your display", frame: "Corner" };
+        newWidget.settings = { title: "Let's set up your display", frame: "None" };
       } else if (widgetType === "photo_frame") {
-        newWidget.settings = { caption: true, mode: "sequential", frame: "Corner" };
+        newWidget.settings = { caption: true, mode: "sequential", frame: "None" };
       } else if (widgetType === "composite_grid") {
-        newWidget.settings = { layout_type: "sidebar_right", gap: 8, zones: {}, frame: "Corner" };
+        newWidget.settings = { layout_type: "sidebar_right", gap: 8, zones: {}, frame: "None" };
       } else if (widgetType === "network") {
-        newWidget.settings = { frame: "Corner" };
+        newWidget.settings = { frame: "None" };
       }
 
       pl.items.push(newWidget);
@@ -1083,6 +1089,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       currentConfig.display.driver = document.getElementById('cfg-driver').value;
       currentConfig.display.model = document.getElementById('cfg-model').value;
       currentConfig.display.orientation = parseInt(document.getElementById('cfg-orient').value);
+      currentConfig.display.saturation = parseFloat(document.getElementById('cfg-saturation').value) || 0.5;
       // Drop stale fixed resolution: the server re-derives width/height from
       // the selected panel model (DISPLAY_MODELS) so the screen size actually
       // changes. Keeping stale width/height would silently win over the model

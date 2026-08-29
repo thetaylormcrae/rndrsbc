@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.6.7 (2026-08-29)
+
+### Fixed
+
+- **Publish staleness**: 0.6.6's PyPI wheel was built from a pre-amend tag and shipped
+  `core/qa.py` without `resolve_display` — `rndrsbc calibrate` and `doctor` still crashed
+  on `driver: "auto"` with `No module named 'displays.auto'`. 0.6.7 re-releases the same
+  corrected code (post-amend HEAD) so the installed package matches the fix.
+
 ## v0.6.6 (2026-08-29)
 
 ### Features

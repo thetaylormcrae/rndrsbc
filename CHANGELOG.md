@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.5.0 (2026-08-29)
+
+### Features
+
+- **inky**: Allow explicit model override (e673, ac073tc1a, impression_5_7) in config
+  ([`a6a0297`](https://github.com/thetaylormcrae/rndrsbc/commit/a6a0297e8683db432392710e7f63d5d1fa2c720f))
+
+
 ## v0.4.6 (2026-08-29)
 
 ### Bug Fixes

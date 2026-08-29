@@ -164,3 +164,6 @@ def _validate_items(pname: str, items: List[Any], problems: List[str],
         dur = it.get("duration_minutes")
         if dur is not None and not isinstance(dur, (int, float)):
             problems.append(f"playlists.{pname}.items[{i}].duration_minutes: expected number")
+
+# Display driver auto-detection: "auto" probes attached panel,
+# falling back to the virtual display when no hardware is present.

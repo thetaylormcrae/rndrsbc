@@ -1235,21 +1235,20 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 """
 
 
-class QuietHandler(BaseHTTPRequestHandler):
-    """Suppresses noisy tracebacks for benign client-side disconnects."""
-
-    def handle_error(self):
-        e = sys.exc_info()[1]
-        if isinstance(e, (ConnectionResetError, BrokenPipeError)):
-            # Client closed the socket mid-response (browser cancel/reload). Not a fault.
-            self.log_message("client disconnected mid-response (%s)", type(e).__name__)
+class QuietServer(HTTPServer):
+    """Suppresses noisy tracebacks when client disconnects mid-request."""
+    def handle_error(self, request, client_address):
+        exc_type, exc_val, _ = sys.exc_info()
+        if issubclass(exc_type, (ConnectionResetError, BrokenPipeError)):
+            logger.debug(f"Client {client_address} disconnected mid-request ({exc_type.__name__})")
             return
-        super().handle_error()
+        super().handle_error(request, client_address)
 
+class QuietHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         logger.info("http: " + format, *args)
 
-class ProductionHandler(BaseHTTPRequestHandler):
+class ProductionHandler(QuietHandler):
     scheduler = None
     config_path = CONFIG_PATH
 
@@ -1929,10 +1928,10 @@ def run_production_server(scheduler, port=80):
     ProductionHandler.scheduler = scheduler
     actual_port = port
     try:
-        server = HTTPServer(("0.0.0.0", actual_port), QuietHandler)
+        server = QuietServer(("0.0.0.0", actual_port), ProductionHandler)
     except PermissionError:
         actual_port = 8080
-        server = HTTPServer(("0.0.0.0", actual_port), QuietHandler)
+        server = QuietServer(("0.0.0.0", actual_port), ProductionHandler)
 
     logger.info(f"Production Web Dashboard active at: http://localhost:{actual_port}")
     server.serve_forever()

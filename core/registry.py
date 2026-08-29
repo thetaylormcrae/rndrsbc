@@ -76,16 +76,21 @@ DEFAULT_CATALOG = (
 # ---------------------------------------------------------------------------
 # Catalog fetch
 # ---------------------------------------------------------------------------
-def fetch_catalog(url: str = DEFAULT_CATALOG, timeout: int = 15) -> dict:
+def fetch_catalog(url: str = DEFAULT_CATALOG, timeout: int = 15, refresh: bool = False) -> dict:
     """Return the parsed catalog feed. Raises on network/HTTP failure.
 
-    Cache: catalog.json is cached under the deployment REGISTRY_DIR so the app
-    works offline afterward; the CLI passes ``refresh=True`` to force a re-pull.
+    The feed is cached under the deployment REGISTRY_DIR so the app works
+    offline afterward. Interactive CLI commands (search/install/update) pass
+    ``refresh=True`` so they always see the current registry; the server's
+    background cache uses the default (reuse the cached feed when present).
+    On network failure with a stale cache present, falls back to the stale
+    feed rather than failing outright.
     """
     cache_file = os.path.join(paths.REGISTRY_DIR, "catalog.json")
     os.makedirs(paths.REGISTRY_DIR, exist_ok=True)
 
-    if os.path.exists(cache_file):
+    # Reuse the cached feed unless a refresh is explicitly requested.
+    if not refresh and os.path.exists(cache_file):
         with open(cache_file) as f:
             try:
                 return json.load(f)

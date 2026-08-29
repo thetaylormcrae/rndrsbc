@@ -38,7 +38,8 @@ def _available_version(reg_url: str | None = None) -> str | None:
     """Ask the registry feed for the newest published engine version."""
     from core import registry
     try:
-        feed = registry.fetch_catalog(reg_url)
+        # Interactive update check: force a refresh so it reflects newly-published releases.
+        feed = registry.fetch_catalog(reg_url, refresh=True)
         eng = next((e for e in feed.get("engine", []) if e.get("package") == "rndrsbc"), None)
         if eng and eng.get("version"):
             return str(eng["version"])

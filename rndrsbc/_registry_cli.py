@@ -31,7 +31,8 @@ def _pop_catalog_flag(argv):
 def cmd_search(argv, catalog_url=None):
     from core import registry
     catalog_url, argv = _pop_catalog_flag(argv)
-    catalog = registry.fetch_catalog(catalog_url)
+    # Interactive search: always hit the network so the user sees current widgets.
+    catalog = registry.fetch_catalog(catalog_url, refresh=True)
     q = " ".join(argv).lower()
     rows = [w for w in catalog["widgets"] if q in w["id"].lower() or q in w.get("name","").lower()]
     if not rows:
@@ -51,7 +52,7 @@ def cmd_install(argv, catalog_url=None):
     catalog_url, argv = _pop_catalog_flag(argv)
     wid = argv[0]
     force = "--force" in argv
-    catalog = registry.fetch_catalog(catalog_url)
+    catalog = registry.fetch_catalog(catalog_url, refresh=True)
     entry = registry.find(catalog, wid)
     if not entry:
         print(f"Widget '{wid}' not found in registry.")

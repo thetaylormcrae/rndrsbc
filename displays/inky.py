@@ -20,8 +20,12 @@ class InkyDisplay(BaseDisplay):
     # Supported hardware presets (width, height) in landscape
     _PRESETS = {
         "impression_7_3": (800, 480),
+        "e673": (800, 480),
+        "ac073tc1a": (800, 480),
         "spectra73": (800, 480),
         "spectra6": (800, 480),
+        "pim773": (800, 480),
+        "pim667": (800, 480),
         "impression_5_7": (600, 448),
         "impression_4_0": (640, 400),
         "what": (400, 300),
@@ -73,7 +77,43 @@ class InkyDisplay(BaseDisplay):
             return None
 
     def init_hardware(self):
-        # 1. Try I2C EEPROM auto-detection first (matches InkyPi)
+        # 1. If explicit model requested, instantiate directly
+        if self.model and self.model not in ("auto", "impression_7_3"):
+            try:
+                if self.model in ("e673", "spectra73", "spectra6", "pim773"):
+                    from inky.inky_e673 import Inky as InkyE673
+                    self._inky = InkyE673(resolution=(800, 480))
+                elif self.model in ("ac073tc1a", "7colour", "pim667"):
+                    from inky.inky_ac073tc1a import Inky as InkyAC073TC1A
+                    self._inky = InkyAC073TC1A(resolution=(800, 480))
+                elif self.model == "impression_5_7":
+                    from inky.inky_uc8159 import Inky as InkyUC8159
+                    self._inky = InkyUC8159(resolution=(600, 448))
+                elif self.model == "impression_4_0":
+                    try:
+                        from inky.inky_e640 import Inky as InkyE640
+                        self._inky = InkyE640(resolution=(600, 400))
+                    except Exception:
+                        from inky.inky_uc8159 import Inky as InkyUC8159
+                        self._inky = InkyUC8159(resolution=(640, 400))
+                elif self.model == "what":
+                    from inky.what import InkyWHAT
+                    self._inky = InkyWHAT("red")
+                elif self.model == "phat":
+                    from inky.phat import InkyPHAT
+                    self._inky = InkyPHAT("red")
+
+                if self._inky is not None:
+                    if hasattr(self._inky, "resolution"):
+                        self.width, self.height = self._inky.resolution
+                    if hasattr(self._inky, "set_border"):
+                        self._inky.set_border(getattr(self._inky, "BLACK", 0))
+                    logger.info(f"[Inky] Connected to hardware via explicit model '{self.model}': {self.width}x{self.height}")
+                    return
+            except Exception as e:
+                logger.warning(f"[Inky] Failed to initialize explicit model '{self.model}': {e}")
+
+        # 2. Try I2C EEPROM auto-detection (matches InkyPi)
         try:
             from inky.auto import auto
             self._inky = auto()
@@ -86,7 +126,7 @@ class InkyDisplay(BaseDisplay):
         except Exception as e:
             logger.debug(f"[Inky] inky.auto() did not initialize ({e}), falling back to model '{self.model}'")
 
-        # 2. Direct hardware initialization fallback using explicit model
+        # 3. Direct hardware initialization fallback using explicit model
         try:
             if self.model in ["impression_7_3", "7colour", "spectra73", "spectra6"]:
                 try:
@@ -115,6 +155,8 @@ class InkyDisplay(BaseDisplay):
             if self._inky is not None:
                 if hasattr(self._inky, "resolution"):
                     self.width, self.height = self._inky.resolution
+                if hasattr(self._inky, "set_border"):
+                    self._inky.set_border(getattr(self._inky, "BLACK", 0))
                 logger.info(f"[Inky] Connected to Inky hardware via direct driver '{self.model}': {self.width}x{self.height}")
         except Exception as e:
             logger.warning(f"[Inky] Direct hardware initialization failed: {e}")

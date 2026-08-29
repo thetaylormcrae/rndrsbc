@@ -1521,6 +1521,18 @@ class ProductionHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 return
 
+        # Onboarding state-mutators that can disrupt connectivity are gated once an
+        # admin password exists, so they cannot be fired anonymously post-setup.
+        # (/api/onboarding/claim stays open: it is bounded by claim-token validity and
+        # is required to complete the pre-setup first-run flow.)
+        if parsed.path in ("/api/onboarding/ap/start", "/api/onboarding/ap/stop", "/api/onboarding/wifi"):
+            if self._has_admin_setup() and not self._is_authenticated():
+                self.send_response(401)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"error":"Authentication required"}')
+                return
+
         if parsed.path == "/api/onboarding/ap/start":
             ok = onboarding_ap_manager.start_ap(force=True)
             self.send_response(200 if ok else 500)
@@ -1541,7 +1553,17 @@ class ProductionHandler(BaseHTTPRequestHandler):
             try:
                 body = json.loads(raw_body.decode("utf-8"))
                 ssid = (body.get("ssid") or "").strip()
-                password = body.get("password", "")
+                password = body.get("password", "") or ""
+                # Reject anything that could break out of the wpa_supplicant
+                # network={ ssid="..." psk="..." } block or carry control chars.
+                def _safe_wifi_field(value: str, max_len: int = 63) -> str:
+                    if len(value) > max_len:
+                        raise ValueError("field too long")
+                    if any(ch in value for ch in ('"', "\\", "\n", "\r", "\t", "\x00")):
+                        raise ValueError("field contains invalid characters")
+                    return value
+                ssid = _safe_wifi_field(ssid)
+                password = _safe_wifi_field(password)
                 if not ssid:
                     self.send_response(400); self.end_headers(); return
 

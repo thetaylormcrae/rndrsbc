@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.4.5 (2026-08-29)
+
+### Bug Fixes
+
+- **inky**: Align inky driver with InkyPi architecture for full-color rendering
+  ([`9db6e19`](https://github.com/thetaylormcrae/rndrsbc/commit/9db6e19c720577fb23562583342dcb2035fdcfeb))
+
+
 ## v0.4.4 (2026-08-29)
 
 ### Bug Fixes

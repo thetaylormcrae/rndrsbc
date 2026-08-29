@@ -37,6 +37,7 @@ class Scheduler:
         self.is_running = False
         self._thread = None
         self.last_rendered_image = None
+        self.last_rendered_widget = None
         self.last_preview_image = None
         self.last_render_timestamp = 0
         self._in_quiet_mode = False
@@ -198,6 +199,17 @@ class Scheduler:
         widget_id = item.get("widget")
         settings = item.get("settings", {})
 
+        # Dedupe: if we already rendered the SAME widget moments ago and this
+        # isn't an explicit forced refresh, skip it. Prevents startup bursts
+        # (main's initial render + _run_loop's first tick) and button/API
+        # double-taps from stacking renders on a slow e-Paper panel.
+        if (not force_hardware and self.last_rendered_widget == widget_id
+                and self.last_render_timestamp is not None
+                and time.time() - self.last_render_timestamp < 10):
+            logger.debug("Skipping redundant render of %s (%.1fs ago)",
+                         widget_id, time.time() - self.last_render_timestamp)
+            return
+
         widget = self.widgets.get(widget_id)
         if not widget:
             logger.error(f"Widget '{widget_id}' not found in registry.")
@@ -313,6 +325,7 @@ class Scheduler:
                     pass
 
             self.last_rendered_image = dithered
+            self.last_rendered_widget = widget_id
             self.last_render_timestamp = time.time()
             elapsed_ms = (time.time() - t0) * 1000
             TELEMETRY.record_render_success(elapsed_ms, widget.name)
@@ -325,6 +338,10 @@ class Scheduler:
             gc.collect()
 
     def _run_loop(self):
+        # Stagger the first tick: main.py already fires an explicit initial
+        # render at boot, so wait a short beat before the loop's own first
+        # render to avoid a double-refresh burst on the panel.
+        time.sleep(3)
         while self.is_running:
             items = self.active_playlist_items
             if not items:

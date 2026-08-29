@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.5.1 (2026-08-29)
+
+### Bug Fixes
+
+- **inky**: Patch upstream Pimoroni SPI buffer chunking bug on Spectra 6 (E673)
+  ([`560001a`](https://github.com/thetaylormcrae/rndrsbc/commit/560001af497c48623536ddcbcc936ccc98ad2b22))
+
+
 ## v0.5.0 (2026-08-29)
 
 ### Features

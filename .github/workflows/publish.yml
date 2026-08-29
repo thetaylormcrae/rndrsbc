@@ -24,7 +24,11 @@ jobs:
         run: python -m pip install --upgrade build
 
       - name: Build sdist + wheel
-        run: python -m build --no-isolation
+        run: |
+          # Isolated build: lets hatchling resolve from [build-system].requires.
+          # --no-isolation previously failed because ``hatchling`` isn't installed
+          # in the runner env and the backend couldn't be imported.
+          python -m build
 
       - name: Sanity-check the wheel imports
         run: |

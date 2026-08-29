@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.4.3 (2026-08-29)
+
+### Bug Fixes
+
+- **inky**: Add live buffer diagnostics to confirm physical-skew root cause
+  ([`5b13e45`](https://github.com/thetaylormcrae/rndrsbc/commit/5b13e452ffb1a7c7a056669215f112d1d3b267f1))
+
+
 ## v0.4.2 (2026-08-29)
 
 ### Bug Fixes

@@ -2,13 +2,34 @@
 
 <!-- version list -->
 
+## v0.6.6 (2026-08-29)
+
+### Features
+
+- **QA tooling**: new `calibrate`, `snapshot`, and `panel-spec` subcommands for
+  deterministic display validation (see README *QA & Display Validation*)
+- **core.qa**: single headless display-builder shared by doctor / calibrate / snapshot /
+  panel-spec so the QA path and the production daemon can't diverge
+- **calibrate**: renders the reference 7-colour pattern, verifies each block is a true
+  primary, pushes it to the panel, and persists `calibration.png` under /rool-drive
+- **snapshot**: captures the intended pre-dither RGB frame to /rool-drive/screen.png
+  without touching the panel — a remote-verifiable ground truth
+- **panel-spec**: reads the eeprom to identify the exact Inky generation + native palette,
+  so a hardware swap surfaces as a boot-time mismatch
+- **golden-image regression**: `tests/test_qa_regression.py` locks in pattern primaries
+  and a deterministic render_preview
+- **core.qa.resolve_display**: single driver-dispatch source of truth now shared by
+  `main.py` and the doctor, so `driver: "auto"` correctly probes the attached panel
+  instead of failing with `No module named 'displays.auto'`; refactored
+  `main.py` to use it so production and QA can't diverge
+
 ## v0.6.5 (2026-08-29)
 
 ### Bug Fixes
 
-- **inky**: Quantize to Spectra 6 primaries in software before set_image() (P-mode path) - kills
-  Pimoroni's inverted SATURATED/DESATURATED palette blend that caused muddy/inconsistent colors;
-  output now deterministic primaries
+- **inky**: quantize to true Spectra 6 primaries in software before set_image()
+  (P-mode branch) — kills Pimoroni's inverted SATURATED/DESATURATED palette blend that
+  caused muddy/inconsistent colours; output is now deterministic primaries
   ([`74259f4`](https://github.com/thetaylormcrae/rndrsbc/commit/74259f4050e16756264a4d2e3f5ba4ad460277cd))
 
 

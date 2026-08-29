@@ -131,53 +131,12 @@ def main():
 
     # 2. Production Daemon + Web Dashboard
     config = load_config()
-    disp_cfg = config.get("display", {})
-    driver_name = disp_cfg.get("driver", "auto")
-    orientation = disp_cfg.get("orientation", disp_cfg.get("rotation", 0))
-    saturation = float(disp_cfg.get("saturation", 0.5))
-    saturation = max(0.1, min(1.0, saturation))  # clamp to sane Inky range
-    inky_kw = dict(
-        orientation=orientation,
-        saturation=saturation,
-    )
 
-    if driver_name == "auto":
-        # Auto-detect a physical panel; fall back to a virtual display otherwise.
-        from displays.inky import InkyDisplay
-        detected = InkyDisplay.detect()
-        if detected is not None:
-            logger.info(f"[display] Auto-detected Inky panel: {detected}")
-            display = InkyDisplay(model=detected, **inky_kw)
-        else:
-            # Also try configured Inky model fallback in case I2C EEPROM auto-detection was unavailable
-            fallback_model = disp_cfg.get("model", "impression_7_3")
-            try_display = InkyDisplay(model=fallback_model, **inky_kw)
-            if try_display._inky is not None:
-                logger.info(f"[display] Connected to Inky panel via model fallback: {fallback_model}")
-                display = try_display
-            else:
-                logger.warning("[display] No physical e-paper detected; falling back to virtual display.")
-                from displays.virtual import VirtualDisplay
-                display = VirtualDisplay(
-                    width=disp_cfg.get("width", 800),
-                    height=disp_cfg.get("height", 480),
-                    output_path=resolve("live_screen.png"),
-                )
-    elif driver_name == "waveshare":
-        from displays.waveshare import WaveshareDisplay
-        display = WaveshareDisplay(model=disp_cfg.get("model", "epd7in3f"), orientation=orientation)
-    elif driver_name == "inky":
-        from displays.inky import InkyDisplay
-        display = InkyDisplay(model=disp_cfg.get("model", "impression_7_3"), **inky_kw)
-    elif driver_name == "framebuffer":
-        from displays.framebuffer import FramebufferDisplay
-        display = FramebufferDisplay(orientation=orientation)
-    else:
-        display = VirtualDisplay(
-            width=disp_cfg.get("width", 800),
-            height=disp_cfg.get("height", 480),
-            output_path=resolve("live_screen.png")  # relocatable preview
-        )
+    # Resolve the active display via the shared QA/daemon source of truth
+    # (core.qa.resolve_display) so production and the doctor/calibrate/snapshot
+    # subcommands can never diverge on driver wiring, incl. "auto" detection.
+    from core.qa import resolve_display
+    display = resolve_display(config)
 
     # Propagate runtime refresh mode ('auto' default, 'full' opt-out) to driver.
     if hasattr(display, "set_refresh_mode"):

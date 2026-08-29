@@ -186,6 +186,32 @@ class Scheduler:
             self._thread.join(timeout=2)
         logger.info("Scheduler stopped.")
 
+    def render_preview(self, index: int = 0) -> Image.Image:
+        """Render the current playlist item to a full-RGB preview WITHOUT
+        touching the panel. This is the ``snapshot``/QA path: it reproduces
+        exactly what the daemon would draw (same widget, settings, resolution)
+        and returns the pre-dither colour canvas, saving nothing to hardware.
+        Returns None when no item is available.
+        """
+        items = self.active_playlist_items
+        if not items:
+            return None
+        item = items[index % len(items)]
+        widget_id = item.get("widget")
+        settings = item.get("settings", {})
+        widget = self.widgets.get(widget_id)
+        if not widget:
+            return None
+        widget.config = self.config
+        try:
+            dims = self.display.get_resolution()
+            image = widget.safe_render(dims, settings)
+            self.last_preview_image = image.copy()
+            return self.last_preview_image
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(f"render_preview failed for {widget_id}: {type(exc).__name__}: {exc}")
+            return None
+
     def trigger_render_now(self, index: int = None, force_hardware: bool = False):
         """Forces an immediate render through the cache + dirty-rect + transition pipeline."""
         items = self.active_playlist_items

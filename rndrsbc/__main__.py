@@ -118,6 +118,11 @@ def main(argv=None):
         from rndrsbc import doctor
         return doctor.main(argv[1:])
 
+    # Hardware QA subcommands (calibrate / snapshot / panel-spec).
+    if argv and argv[0] in ("calibrate", "snapshot", "panel-spec", "panelspec"):
+        from rndrsbc import _qa_cli
+        return _qa_cli.main(argv)
+
     # Registry subcommands don't need the frame.
     if argv and argv[0] in _REGISTRY_COMMANDS:
         from rndrsbc import _registry_cli

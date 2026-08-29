@@ -105,12 +105,19 @@ def check_config():
     display = cfg.get("display") or {}
     checks.append(("display.driver", str(display.get("driver", "<unset>")) or "<unset>",
                    "ok" if display.get("driver") else "warn"))
-    # check the chosen driver module resolves
-    driver = (display.get("driver") or "").replace("driver_", "")
-    mod, err = _import_obj(f"displays.{driver}") if driver else (None, None)
-    if driver:
-        checks.append((f"display.{driver}", "import ok" if mod else f"no driver module ({type(err).__name__}): {err}",
-                       "ok" if mod else "fail"))
+    # check the chosen driver resolves correctly (incl. "auto" detection path),
+    # using the same shared resolver the daemon + QA subcommands use.
+    driver = (display.get("driver") or "virtual").replace("driver_", "")
+    try:
+        from core.qa import resolve_display
+        resolved = resolve_display({"display": display})
+        checks.append((f"display.{driver}",
+                       f"resolved -> {type(resolved).__name__}",
+                       "ok"))
+    except Exception as exc:  # noqa: BLE001
+        checks.append((f"display.{driver}",
+                       f"no driver/resolver ({type(exc).__name__}): {exc}",
+                       "fail"))
     # active playlist sanity
     playlists = cfg.get("playlists") or {}
     active = cfg.get("active_playlist")

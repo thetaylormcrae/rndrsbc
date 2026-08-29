@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.6.4 (2026-08-29)
+
+### Bug Fixes
+
+- **scheduler**: Dedupe same-widget renders within 10s (kills startup/button/API render bursts on
+  slow e-Paper); stagger first loop tick 3s so main's initial render wins
+  ([`f86e403`](https://github.com/thetaylormcrae/rndrsbc/commit/f86e40363593d6004beef5371981c9624a11b06f))
+
+
 ## v0.6.3 (2026-08-29)
 
 ### Bug Fixes

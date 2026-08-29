@@ -26,7 +26,7 @@ dev = ["build", "twine"]
 rndrsbc = "rndrsbc.__main__:main"
 
 [project.urls]
-Homepage = "https://github.com/rndrsbc/rndrsbc"
+Homepage = "https://github.com/thetaylormcrae/rndrsbc"
 
 [tool.hatch.version]
 path = "core/__init__.py"

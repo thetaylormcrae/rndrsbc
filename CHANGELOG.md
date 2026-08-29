@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.5.2 (2026-08-29)
+
+### Bug Fixes
+
+- **widgets**: Default frame style to None (edge-to-edge); expose inky saturation in config template
+  ([`390a82e`](https://github.com/thetaylormcrae/rndrsbc/commit/390a82e5c358c93ede4f2e424771f2072be7ed85))
+
+
 ## v0.5.1 (2026-08-29)
 
 ### Bug Fixes

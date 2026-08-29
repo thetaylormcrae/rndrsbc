@@ -36,10 +36,22 @@ class InkyDisplay(BaseDisplay):
         self.orientation = orientation
         self._inky = None
 
-        self.width, self.height = self._PRESETS.get(model, (800, 480))
+        # Logical resolution (what the scheduler renders to)
+        # For impression_7_3, default logical is 800x480 (landscape)
+        base_dims = self._PRESETS.get(model, (800, 480))
+        # If preset is portrait (e.g. 480x800) but user wants landscape, or vice versa:
+        self.width, self.height = base_dims
         self.init_hardware()
 
     def get_resolution(self) -> tuple[int, int]:
+        # Logical resolution returned to scheduler
+        # If model is impression_7_3, logical is 800x480 (landscape)
+        if self.model == "impression_7_3":
+            # Logical is landscape 800x480 unless orientation specifies otherwise
+            if self.orientation in [90, 270]:
+                return (480, 800)
+            return (800, 480)
+        
         if self.orientation in [90, 270]:
             return (self.height, self.width)
         return (self.width, self.height)
@@ -126,16 +138,32 @@ class InkyDisplay(BaseDisplay):
     def update(self, canvas: Image.Image, dirty_rects: list = None):
         """Quantizes (if needed) and flushes the buffer to Inky hardware."""
         image = canvas
-        if self.orientation != 0:
-            image = image.rotate(-self.orientation, expand=True)
-
-        if image.size != (self.width, self.height):
-            image = image.resize((self.width, self.height), Image.Resampling.LANCZOS)
+        
+        # Ensure image matches logical resolution
+        logical_res = self.get_resolution()
+        if image.size != logical_res:
+            image = image.resize(logical_res, Image.Resampling.LANCZOS)
 
         if self._inky is not None:
+            phys_w, phys_h = getattr(self._inky, "resolution", (self.width, self.height))
+            
+            # If physical panel is portrait (e.g. 480x800) and logical image is landscape (800x480),
+            # Pimoroni inky set_image expects physical orientation. Rotate 90 deg to fit.
+            if phys_w < phys_h and image.width > image.height:
+                image = image.rotate(90, expand=True)
+            elif phys_w > phys_h and image.width < image.height:
+                image = image.rotate(90, expand=True)
+
+            # Apply any additional user rotation/orientation
+            if self.orientation != 0:
+                image = image.rotate(-self.orientation, expand=True)
+
+            if image.size != (phys_w, phys_h):
+                image = image.resize((phys_w, phys_h), Image.Resampling.LANCZOS)
+
             self._inky.set_image(image)
             self._inky.show()
-            logger.info("Successfully refreshed Inky Impression screen.")
+            logger.info(f"Successfully refreshed Inky Impression screen (physical {phys_w}x{phys_h}).")
         else:
             logger.info(f"[Inky Mock] Flashed image {image.size} in {self.model} mode.")
 

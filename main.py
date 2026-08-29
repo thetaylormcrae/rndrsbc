@@ -133,6 +133,7 @@ def main():
     config = load_config()
     disp_cfg = config.get("display", {})
     driver_name = disp_cfg.get("driver", "auto")
+    orientation = disp_cfg.get("orientation", disp_cfg.get("rotation", 0))
 
     if driver_name == "auto":
         # Auto-detect a physical panel; fall back to a virtual display otherwise.
@@ -140,11 +141,11 @@ def main():
         detected = InkyDisplay.detect()
         if detected is not None:
             logger.info(f"[display] Auto-detected Inky panel: {detected}")
-            display = InkyDisplay(model=detected, orientation=disp_cfg.get("orientation", 0))
+            display = InkyDisplay(model=detected, orientation=orientation)
         else:
             # Also try configured Inky model fallback in case I2C EEPROM auto-detection was unavailable
             fallback_model = disp_cfg.get("model", "impression_7_3")
-            try_display = InkyDisplay(model=fallback_model, orientation=disp_cfg.get("orientation", 0))
+            try_display = InkyDisplay(model=fallback_model, orientation=orientation)
             if try_display._inky is not None:
                 logger.info(f"[display] Connected to Inky panel via model fallback: {fallback_model}")
                 display = try_display
@@ -158,13 +159,13 @@ def main():
                 )
     elif driver_name == "waveshare":
         from displays.waveshare import WaveshareDisplay
-        display = WaveshareDisplay(model=disp_cfg.get("model", "epd7in3f"), orientation=disp_cfg.get("orientation", 0))
+        display = WaveshareDisplay(model=disp_cfg.get("model", "epd7in3f"), orientation=orientation)
     elif driver_name == "inky":
         from displays.inky import InkyDisplay
-        display = InkyDisplay(model=disp_cfg.get("model", "impression_7_3"), orientation=disp_cfg.get("orientation", 0))
+        display = InkyDisplay(model=disp_cfg.get("model", "impression_7_3"), orientation=orientation)
     elif driver_name == "framebuffer":
         from displays.framebuffer import FramebufferDisplay
-        display = FramebufferDisplay(orientation=disp_cfg.get("orientation", 0))
+        display = FramebufferDisplay(orientation=orientation)
     else:
         display = VirtualDisplay(
             width=disp_cfg.get("width", 800),

@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.6.1 (2026-08-29)
+
+### Bug Fixes
+
+- **server**: Suppress ConnectionReset/BrokenPipe noise from browser aborts; route through
+  QuietHandler
+  ([`791aad0`](https://github.com/thetaylormcrae/rndrsbc/commit/791aad03d2a444fef5fea4ffa06463067a67f147))
+
+
 ## v0.6.0 (2026-08-29)
 
 ### Features

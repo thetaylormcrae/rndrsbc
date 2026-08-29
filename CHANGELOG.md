@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.7.0 (2026-08-29)
+
+### Features
+
+- **qa**: Add calibrate/snapshot/panel-spec subcommands + golden-image regression + core.qa shared
+  display builder
+  ([`dd026d8`](https://github.com/thetaylormcrae/rndrsbc/commit/dd026d842619114bbaef9f6f8829c831502bb70b))
+
+
 ## v0.6.6 (2026-08-29)
 
 ### Features

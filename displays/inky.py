@@ -203,8 +203,40 @@ class InkyDisplay(BaseDisplay):
             logger.warning(f"[Inky] Direct hardware initialization failed: {e}")
             self._inky = None
 
+    # True 7-color Spectra 6 / ACeP primaries (DESATURATED_PALETTE-equivalent)
+    # Ordered so PIL quantize picks them in P-mode index order, and Pimoroni's
+    # e673 set_image() P-mode branch maps them 1:1 to display indices.
+    SPECTRA6_PRIMARIES = [
+        (0, 0, 0),        # 0 Black
+        (255, 255, 255),  # 1 White
+        (255, 255, 0),    # 2 Yellow
+        (255, 0, 0),      # 3 Red
+        (0, 0, 255),      # 4 Blue
+        (0, 255, 0),      # 5 Green
+        (255, 255, 255),  # 6 White (duplicate; unused by putpalette but keeps parity)
+    ]
+
+    def _quantize_primaries(self, image: Image.Image) -> Image.Image:
+        """Quantize an RGB canvas to the Spectra 6 primaries in P-mode, Floyd-Steinberg dithered.
+
+        Handing a 6-color P-mode image to Pimoroni's e673 set_image() makes it take the
+        P-mode branch: it keeps our exact palette (no broken _palette_blend re-quantization)
+        and skips dithering a second time. Output colors are therefore deterministic.
+        """
+        pal = Image.new("P", (1, 1))
+        pal.putpalette([c for rgb in self.SPECTRA6_PRIMARIES for c in rgb])
+        return image.convert("RGB").quantize(
+            colors=6, palette=pal, dither=Image.Dither.FLOYDSTEINBERG
+        )
+
     def update(self, canvas: Image.Image, dirty_rects: list = None):
-        """Displays the provided RGB image on the Inky display (matching InkyPi)."""
+        """Displays the provided canvas on the Inky display.
+
+        Software-quantizes to Spectra 6 primaries (P-mode) first, then hands the
+        palette image to set_image() so Pimoroni never applies its inverted
+        SATURATED/DESATURATED blend. Saturation therefore maps onto our own
+        primaries pipeline (kept for API compatibility; output stays deterministic).
+        """
         image = canvas.convert("RGB")
 
         # Apply orientation rotation
@@ -218,6 +250,9 @@ class InkyDisplay(BaseDisplay):
         target_res = (self.width, self.height)
         if image.size != target_res:
             image = image.resize(target_res, Image.Resampling.LANCZOS)
+
+        # Quantize to the 6 display primaries BEFORE the driver sees it.
+        image = self._quantize_primaries(image)
 
         if self._inky is not None:
             self._inky.set_image(image, saturation=self.saturation)

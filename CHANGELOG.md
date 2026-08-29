@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.4.4 (2026-08-29)
+
+### Bug Fixes
+
+- **inky**: Add nibble-swap + flip handling for skewed 7.3" panels
+  ([`f724434`](https://github.com/thetaylormcrae/rndrsbc/commit/f724434dfc7f53f218b4c306fcf9f1b0519d93a4))
+
+
 ## v0.4.3 (2026-08-29)
 
 ### Bug Fixes

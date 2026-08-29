@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.4.0 (2026-08-29)
+
+### Features
+
+- **inky,auth**: Robust inky impression hardware init + admin password management
+  ([`28d57bd`](https://github.com/thetaylormcrae/rndrsbc/commit/28d57bde8abde513b53e541443e9aa48e37574a9))
+
+
 ## v0.3.1 (2026-08-29)
 
 ### Bug Fixes

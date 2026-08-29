@@ -64,7 +64,12 @@ import core.paths as paths
 logger = logging.getLogger("rndrSBC.registry")
 
 DEFAULT_CATALOG = (
-    "https://raw.githubusercontent.com/rndrsbc/rndrsbc-registry/main/catalog.json"
+    # The community catalog feed is served from the registry's GitHub Pages
+    # deployment (custom domain taylor.mcrae.site). It is catalog/_feed.json
+    # (regenerated at deploy time, not committed), so it must be fetched from
+    # the Pages site — raw.githubusercontent has no catalog.json to serve, and
+    # the github.io URL only 301s to the custom domain.
+    "https://taylor.mcrae.site/rndrsbc-registry/catalog/_feed.json"
 )
 
 

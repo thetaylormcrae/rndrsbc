@@ -1,240 +1,150 @@
 """
 rndrSBC - Native Pimoroni Inky Display Driver
 Driver for Pimoroni Inky Impression (4.0", 5.7", 7.3") and Inky pHAT/wHAT panels.
+Matches InkyPi architecture for reliable 7-color / 6-color e-paper rendering.
 """
 
 import logging
-import os
-import time
-import numpy
 from PIL import Image
 from displays.base import BaseDisplay
-from core.color import quantize_image
 
 logger = logging.getLogger("rndrSBC.inky")
+
 
 class InkyDisplay(BaseDisplay):
     """Driver wrapper for Pimoroni Inky Impression & Inky Frame e-Paper displays."""
 
-    # Inky Impression 4/5.7/7.3 (7-color) do NOT expose a safe partial refresh
-    # for color states — full refresh only, matching Pimoroni's guidance.
-    # Legacy B/W Inky phat/what support a single-row partial window but we keep
-    # them full-refresh by default for ghosting safety.
-    SUPPORTS_PARTIAL_REFRESH = False
-    PARTIAL_PRESERVES_GRAYSCALE = False
-    PARTIAL_RECHARGE_LIMIT = 10
+    SUPPORTS_PARTIAL_REFRESH: bool = False
+    color_mode: str = "7color"
 
-    # Inky panel presets: model -> (width, height)
+    # Supported hardware presets (width, height) in landscape
     _PRESETS = {
         "impression_7_3": (800, 480),
+        "spectra73": (800, 480),
+        "spectra6": (800, 480),
         "impression_5_7": (600, 448),
         "impression_4_0": (640, 400),
         "what": (400, 300),
         "phat": (250, 122),
     }
 
-    def __init__(self, model: str = "impression_7_3", orientation: int = 0,
-                 h_flip: bool = False, v_flip: bool = False,
-                 pixel_pair_swap: bool = False):
+    def __init__(self, model: str = "impression_7_3", orientation: int = 0, saturation: float = 0.5, **kwargs):
         super().__init__()
         self.model = model
         self.orientation = orientation
-        self.h_flip = h_flip
-        self.v_flip = v_flip
-        self.pixel_pair_swap = pixel_pair_swap
+        self.saturation = saturation
         self._inky = None
 
-        # Logical resolution (what the scheduler renders to)
-        # For impression_7_3, default logical is 800x480 (landscape)
         base_dims = self._PRESETS.get(model, (800, 480))
-        # If preset is portrait (e.g. 480x800) but user wants landscape, or vice versa:
         self.width, self.height = base_dims
         self.init_hardware()
 
     def get_resolution(self) -> tuple[int, int]:
-        # Logical resolution returned to scheduler
-        # If model is impression_7_3, logical is 800x480 (landscape)
-        if self.model == "impression_7_3":
-            # Logical is landscape 800x480 unless orientation specifies otherwise
-            if self.orientation in [90, 270]:
-                return (480, 800)
-            return (800, 480)
-        
+        if self._inky is not None and hasattr(self._inky, "resolution"):
+            w, h = self._inky.resolution
+        else:
+            w, h = self._PRESETS.get(self.model, (800, 480))
         if self.orientation in [90, 270]:
-            return (self.height, self.width)
-        return (self.width, self.height)
+            return (h, w)
+        return (w, h)
 
     @classmethod
     def detect(cls):
-        """Return the Inky panel model actually attached, or ``None`` if none.
-
-        Uses Pimoroni's ``inky.auto()`` to identify the connected panel; raises no
-        error if hardware is absent (no SPI panel, CI, laptop), returning ``None``
-        so callers can fall back to a virtual display.
-        """
+        """Return the Inky panel model actually attached, or None if none."""
         try:
             from inky.auto import auto
-        except Exception:
-            return None
-        try:
             inky = auto()
+            res = getattr(inky, "resolution", None)
+            if res is None:
+                return None
+            w, h = res
+            if (w, h) in [(800, 480), (480, 800)]:
+                return "impression_7_3"
+            elif (w, h) in [(600, 448), (448, 600)]:
+                return "impression_5_7"
+            elif (w, h) in [(640, 400), (400, 640), (600, 400)]:
+                return "impression_4_0"
+            elif (w, h) in [(400, 300), (300, 400)]:
+                return "what"
+            elif (w, h) in [(250, 122), (122, 250)]:
+                return "phat"
+            return "impression_7_3"
         except Exception:
             return None
-        # inky exposes the detected model via ``type`` metadata or resolution maps;
-        # map a detected panel back to a config ``model`` string when derivable.
-        res = getattr(inky, "resolution", None)
-        if res is None:
-            return None
-        for model, dims in cls._PRESETS.items():
-            if tuple(dims) == tuple(res):
-                return model
-        # Fall back to the most common 7-color panel if the driver object resolves
-        # but has no recognized resolution descriptor.
-        return "impression_7_3"
 
     def init_hardware(self):
-        # 1. Try I2C EEPROM auto-detection first
+        # 1. Try I2C EEPROM auto-detection first (matches InkyPi)
         try:
             from inky.auto import auto
             self._inky = auto()
             if hasattr(self._inky, "resolution"):
                 self.width, self.height = self._inky.resolution
-            # auto() does not take h_flip/v_flip; apply them on the object so
-            # show() honors them even on the auto-detect path.
-            self._inky.h_flip = self.h_flip
-            self._inky.v_flip = self.v_flip
-            logger.info(f"[Inky] Connected to Inky hardware via auto-detect: {self.width}x{self.height} "
-                        f"(h_flip={self.h_flip}, v_flip={self.v_flip})")
+            logger.info(f"[Inky] Connected to Inky hardware via auto-detect: {self.width}x{self.height}")
             return
         except Exception as e:
             logger.debug(f"[Inky] inky.auto() did not initialize ({e}), falling back to model '{self.model}'")
 
-        # 2. Fall back to direct hardware instantiation based on model
+        # 2. Direct hardware initialization fallback using explicit model
         try:
-            if self.model in ("impression_7_3", "epd7in3f", "7colour", "impressions73"):
-                # Try AC073TC1A (newer Inky Impression 7.3"), E673 (Spectra 7.3"), then UC8159 (Impression 7.3")
+            if self.model in ["impression_7_3", "7colour", "spectra73", "spectra6"]:
                 try:
+                    from inky.inky_e673 import Inky as InkyE673
+                    self._inky = InkyE673(resolution=(800, 480))
+                except Exception:
                     from inky.inky_ac073tc1a import Inky as InkyAC073TC1A
                     self._inky = InkyAC073TC1A(resolution=(800, 480))
-                except Exception:
-                    try:
-                        from inky.inky_e673 import Inky as InkyE673
-                        self._inky = InkyE673(resolution=(800, 480))
-                    except Exception:
-                        from inky.inky_uc8159 import Inky as InkyUC8159
-                        self._inky = InkyUC8159(resolution=(800, 480))
-            elif self.model in ("impression_5_7", "impressions"):
+            elif self.model == "impression_5_7":
                 from inky.inky_uc8159 import Inky as InkyUC8159
                 self._inky = InkyUC8159(resolution=(600, 448))
-            elif self.model in ("impression_4_0", "spectra40"):
+            elif self.model == "impression_4_0":
                 try:
                     from inky.inky_e640 import Inky as InkyE640
                     self._inky = InkyE640(resolution=(600, 400))
                 except Exception:
                     from inky.inky_uc8159 import Inky as InkyUC8159
                     self._inky = InkyUC8159(resolution=(640, 400))
-            elif self.model in ("what", "whatssd1683"):
+            elif self.model == "what":
                 from inky.what import InkyWHAT
                 self._inky = InkyWHAT("red")
             elif self.model == "phat":
                 from inky.phat import InkyPHAT
                 self._inky = InkyPHAT("red")
-            
+
             if self._inky is not None:
                 if hasattr(self._inky, "resolution"):
                     self.width, self.height = self._inky.resolution
-                logger.info(f"[Inky] Connected to Inky hardware ({self.model}): {self.width}x{self.height}")
-        except Exception as e2:
-            logger.warning(f"[Inky] Hardware initialization failed ({e2}). Running in simulation mode.")
+                logger.info(f"[Inky] Connected to Inky hardware via direct driver '{self.model}': {self.width}x{self.height}")
+        except Exception as e:
+            logger.warning(f"[Inky] Direct hardware initialization failed: {e}")
             self._inky = None
 
     def update(self, canvas: Image.Image, dirty_rects: list = None):
-        """Quantizes (if needed) and flushes the buffer to Inky hardware."""
-        image = canvas
+        """Displays the provided RGB image on the Inky display (matching InkyPi)."""
+        image = canvas.convert("RGB")
 
-        # ---- DEBUG: capture & report exactly what we're about to drive ----
-        logger.info(
-            "[Inky-debug] update() called: canvas size=%s mode=%s orientation=%d",
-            canvas.size, canvas.mode, self.orientation,
-        )
-        if os.environ.get("RNDRSBC_INKY_DUMP"):
-            try:
-                dump = os.environ["RNDRSBC_INKY_DUMP"]
-                os.makedirs(dump, exist_ok=True)
-                p = os.path.join(dump, "inky-input-%d.png" % int(time.time()))
-                canvas.convert("RGB").save(p)
-                logger.info("[Inky-debug] dumped pre-driver canvas to %s", p)
-            except Exception as e:  # pragma: no cover - debug only
-                logger.warning("[Inky-debug] dump failed: %s", e)
+        # Apply orientation rotation
+        if self.orientation == 90:
+            image = image.rotate(90, expand=True)
+        elif self.orientation == 180:
+            image = image.rotate(180, expand=True)
+        elif self.orientation == 270:
+            image = image.rotate(270, expand=True)
 
-        # Ensure image matches logical resolution
-        logical_res = self.get_resolution()
-        if image.size != logical_res:
-            logger.info(
-                "[Inky-debug] resizing buffer %s -> %s (logical res)",
-                image.size, logical_res,
-            )
-            image = image.resize(logical_res, Image.Resampling.LANCZOS)
+        target_res = (self.width, self.height)
+        if image.size != target_res:
+            image = image.resize(target_res, Image.Resampling.LANCZOS)
 
         if self._inky is not None:
-            phys_w, phys_h = getattr(self._inky, "resolution", (self.width, self.height))
-            logger.info("[Inky-debug] physical resolution = %s", (phys_w, phys_h))
-
-            # If physical panel is portrait (e.g. 480x800) and logical image is landscape (800x480),
-            # Pimoroni inky set_image expects physical orientation. Rotate 90 deg to fit.
-            if phys_w < phys_h and image.width > image.height:
-                logger.info("[Inky-debug] auto-rotating 90deg (portrait panel, landscape buffer)")
-                image = image.rotate(90, expand=True)
-            elif phys_w > phys_h and image.width < image.height:
-                logger.info("[Inky-debug] auto-rotating 90deg (landscape panel, portrait buffer)")
-                image = image.rotate(90, expand=True)
-
-            # Apply any additional user rotation/orientation
-            if self.orientation != 0:
-                logger.info("[Inky-debug] applying orientation rotation=%s", self.orientation)
-                image = image.rotate(-self.orientation, expand=True)
-
-            if image.size != (phys_w, phys_h):
-                logger.info("[Inky-debug] resizing buffer %s -> %s (physical res)",
-                            image.size, (phys_w, phys_h))
-                image = image.resize((phys_w, phys_h), Image.Resampling.LANCZOS)
-
-            logger.info(
-                "[Inky-debug] final buffer -> set_image: size=%s mode=%s",
-                image.size, image.mode,
-            )
-
-            self._inky.set_image(image)
-            if self.pixel_pair_swap:
-                self._show_with_byte_swap(self._inky)
-            else:
-                self._inky.show()
-            logger.info(f"Successfully refreshed Inky Impression screen (physical {phys_w}x{phys_h}).")
+            self._inky.set_image(image, saturation=self.saturation)
+            self._inky.show()
+            logger.info(f"Successfully refreshed Inky Impression screen ({self.width}x{self.height}).")
         else:
             logger.info(f"[Inky Mock] Flashed image {image.size} in {self.model} mode.")
 
-    def _show_with_byte_swap(self, inky_obj):
-        """Like Pimoroni's ``show()`` but with per-byte nibble order swapped.
-
-        Pimoroni packs two pixels per byte as ``(pixel_even << 4) | pixel_odd``.
-        Some 7.3" Impression panels wire the data lines reversed, so the low
-        nibble is actually the first pixel. This reverses that packing so the
-        column-pair swizzle (the stretched diagonal skew) is corrected.
-        """
-        region = inky_obj.buf
-        if inky_obj.v_flip:
-            region = numpy.fliplr(region)
-        if inky_obj.h_flip:
-            region = numpy.flipud(region)
-        if getattr(inky_obj, "rotation", 0):
-            region = numpy.rot90(region, inky_obj.rotation // 90)
-        buf = region.flatten()
-        # Swap nibble significance: lowL becomes high, high becomes low
-        swapped = ((buf[1::2] << 4) & 0xF0) | (buf[::2] & 0x0F)
-        inky_obj._update(swapped.astype("uint8").tolist())
-
     def display_image(self, image: Image.Image):
+        """Backwards compatibility alias for update()."""
         self.update(image)
 
     def sleep(self):
+        """No-op sleep for Inky (sleeps automatically)."""
         pass

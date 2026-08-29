@@ -134,11 +134,10 @@ def main():
     disp_cfg = config.get("display", {})
     driver_name = disp_cfg.get("driver", "auto")
     orientation = disp_cfg.get("orientation", disp_cfg.get("rotation", 0))
+    saturation = float(disp_cfg.get("saturation", 0.5))
     inky_kw = dict(
         orientation=orientation,
-        h_flip=bool(disp_cfg.get("h_flip", False)),
-        v_flip=bool(disp_cfg.get("v_flip", False)),
-        pixel_pair_swap=bool(disp_cfg.get("pixel_pair_swap", False)),
+        saturation=saturation,
     )
 
     if driver_name == "auto":

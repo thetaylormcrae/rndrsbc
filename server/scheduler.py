@@ -215,7 +215,19 @@ class Scheduler:
 
         self._in_quiet_mode = False
         dims = self.display.get_resolution()
-        color_mode = self.config.get("display", {}).get("color_mode", "mono").lower()
+
+        # For Inky displays, preserve full RGB color canvas so Inky library's
+        # native multi-color palette engine handles 7-color / 6-color dithering (like InkyPi).
+        disp_color_mode = self.config.get("display", {}).get("color_mode")
+        if not disp_color_mode:
+            from displays.inky import InkyDisplay
+            if isinstance(self.display, InkyDisplay):
+                color_mode = "rgb"
+            else:
+                color_mode = getattr(self.display, "color_mode", "mono")
+        else:
+            color_mode = disp_color_mode.lower()
+
         dither_enabled = bool(self.config.get("display", {}).get("dither", True))
         transition_type = self.config.get("transition", "cut")
         t0 = time.time()

@@ -63,7 +63,13 @@ jobs:
       - name: Run semantic release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: semantic-release -v publish
+        # Use `version`, not `publish`: `publish` bails when the most recent
+        # tag (e.g. v0.2.0) has no corresponding GitHub Release object
+        # ("No release corresponds to tag ... can't upload dists"), so it
+        # silently exits without bumping or tagging. `version` bumps
+        # core/__init__.py, regenerates CHANGELOG.md, and cuts + pushes the
+        # vX.Y.Z tag, which fires publish.yml to build/upload that version.
+        run: semantic-release -v version
 
       - name: Report new version
         run: |

@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.4.2 (2026-08-29)
+
+### Bug Fixes
+
+- **inky**: Auto-transpose landscape buffers for portrait-native Inky Impression hardware
+  ([`ce4fd86`](https://github.com/thetaylormcrae/rndrsbc/commit/ce4fd8687c0e51ab1d509b941aec9963b6bbb2ba))
+
+
 ## v0.4.1 (2026-08-29)
 
 ### Bug Fixes

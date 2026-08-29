@@ -35,7 +35,14 @@ def _v1_to_v2(cfg: dict) -> dict:
         disp["rotate"] = bool(int(orient) % 360)
 
     # Backfill responsive layout default for any composite grids.
+    # Playlists come in two historical shapes: a mapping of name -> widget
+    # list(s) (the current template: {"default": ["weather", ...]}) or the
+    # older name -> {layout: {zones: ...}} dict form. Only the dict form has
+    # a per-widget layout to backfill, and it may itself hold widget lists
+    # under a "zones" key, so non-dict entries are skipped (never crash).
     for pl_name, pl in (cfg.get("playlists") or {}).items():
+        if not isinstance(pl, dict):
+            continue  # list-of-names playlist has no layout to migrate
         zones = (pl.get("layout") or {}).get("zones") or {}
         for z in zones.values():
             z.setdefault("responsive", "shrink")

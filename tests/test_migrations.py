@@ -46,3 +46,17 @@ def test_migration_is_idempotent_and_non_destructive():
 
 def test_shape_migrations_do_not_throw_on_minimal_config():
     assert migrate({})["schema_version"] == CURRENT_SCHEMA_VERSION
+
+
+def test_migration_tolerates_list_shaped_playlists():
+    # Regression: real templates / configs have playlist entries as lists of widget names,
+    # not dicts. _v1_to_v2 must skip them cleanly rather than raising AttributeError.
+    old = {
+        "display": {"orientation": 0},
+        "playlists": {
+            "default": ["weather", "network", "calendar"]
+        }
+    }
+    out = migrate(old)
+    assert get_version(out) == CURRENT_SCHEMA_VERSION
+    assert out["playlists"]["default"] == ["weather", "network", "calendar"]

@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.6.0 (2026-08-29)
+
+### Features
+
+- **ui**: Expose Inky saturation in dashboard; default new widgets to frame None
+  ([`5d7f6a1`](https://github.com/thetaylormcrae/rndrsbc/commit/5d7f6a1a5aaa658dcdd2dd0e86faff84e6266702))
+
+
 ## v0.5.2 (2026-08-29)
 
 ### Bug Fixes

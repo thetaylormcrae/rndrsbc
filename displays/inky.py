@@ -79,6 +79,8 @@ class InkyDisplay(BaseDisplay):
             self._inky = auto()
             if hasattr(self._inky, "resolution"):
                 self.width, self.height = self._inky.resolution
+            if hasattr(self._inky, "set_border"):
+                self._inky.set_border(getattr(self._inky, "BLACK", 0))
             logger.info(f"[Inky] Connected to Inky hardware via auto-detect: {self.width}x{self.height}")
             return
         except Exception as e:

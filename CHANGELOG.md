@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.4.1 (2026-08-29)
+
+### Bug Fixes
+
+- **display**: Honor 'rotation' fallback for display orientation in config
+  ([`64a254b`](https://github.com/thetaylormcrae/rndrsbc/commit/64a254b3176e904f974c86c2ab84536d81cedc94))
+
+
 ## v0.4.0 (2026-08-29)
 
 ### Features

@@ -106,7 +106,8 @@ def _validate_display(disp: Any, problems: List[str], warnings: List[str]) -> No
     for k in disp:
         if k not in {"driver","model","orientation","refresh_mode","panel_health",
                      "width","height","dither","color_mode","spi","pins","sleep",
-                     "partial","rot_sequence","lut","update_interval"}:
+                     "partial","rot_sequence","lut","update_interval",
+                     "h_flip","v_flip","pixel_pair_swap"}:
             warnings.append(f"display.{k}: unknown key (ignored)")
 
 

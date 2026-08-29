@@ -6,6 +6,7 @@ Driver for Pimoroni Inky Impression (4.0", 5.7", 7.3") and Inky pHAT/wHAT panels
 import logging
 import os
 import time
+import numpy
 from PIL import Image
 from displays.base import BaseDisplay
 from core.color import quantize_image
@@ -32,10 +33,15 @@ class InkyDisplay(BaseDisplay):
         "phat": (250, 122),
     }
 
-    def __init__(self, model: str = "impression_7_3", orientation: int = 0):
+    def __init__(self, model: str = "impression_7_3", orientation: int = 0,
+                 h_flip: bool = False, v_flip: bool = False,
+                 pixel_pair_swap: bool = False):
         super().__init__()
         self.model = model
         self.orientation = orientation
+        self.h_flip = h_flip
+        self.v_flip = v_flip
+        self.pixel_pair_swap = pixel_pair_swap
         self._inky = None
 
         # Logical resolution (what the scheduler renders to)
@@ -93,7 +99,12 @@ class InkyDisplay(BaseDisplay):
             self._inky = auto()
             if hasattr(self._inky, "resolution"):
                 self.width, self.height = self._inky.resolution
-            logger.info(f"[Inky] Connected to Inky hardware via auto-detect: {self.width}x{self.height}")
+            # auto() does not take h_flip/v_flip; apply them on the object so
+            # show() honors them even on the auto-detect path.
+            self._inky.h_flip = self.h_flip
+            self._inky.v_flip = self.v_flip
+            logger.info(f"[Inky] Connected to Inky hardware via auto-detect: {self.width}x{self.height} "
+                        f"(h_flip={self.h_flip}, v_flip={self.v_flip})")
             return
         except Exception as e:
             logger.debug(f"[Inky] inky.auto() did not initialize ({e}), falling back to model '{self.model}'")
@@ -194,10 +205,33 @@ class InkyDisplay(BaseDisplay):
             )
 
             self._inky.set_image(image)
-            self._inky.show()
+            if self.pixel_pair_swap:
+                self._show_with_byte_swap(self._inky)
+            else:
+                self._inky.show()
             logger.info(f"Successfully refreshed Inky Impression screen (physical {phys_w}x{phys_h}).")
         else:
             logger.info(f"[Inky Mock] Flashed image {image.size} in {self.model} mode.")
+
+    def _show_with_byte_swap(self, inky_obj):
+        """Like Pimoroni's ``show()`` but with per-byte nibble order swapped.
+
+        Pimoroni packs two pixels per byte as ``(pixel_even << 4) | pixel_odd``.
+        Some 7.3" Impression panels wire the data lines reversed, so the low
+        nibble is actually the first pixel. This reverses that packing so the
+        column-pair swizzle (the stretched diagonal skew) is corrected.
+        """
+        region = inky_obj.buf
+        if inky_obj.v_flip:
+            region = numpy.fliplr(region)
+        if inky_obj.h_flip:
+            region = numpy.flipud(region)
+        if getattr(inky_obj, "rotation", 0):
+            region = numpy.rot90(region, inky_obj.rotation // 90)
+        buf = region.flatten()
+        # Swap nibble significance: lowL becomes high, high becomes low
+        swapped = ((buf[1::2] << 4) & 0xF0) | (buf[::2] & 0x0F)
+        inky_obj._update(swapped.astype("uint8").tolist())
 
     def display_image(self, image: Image.Image):
         self.update(image)

@@ -134,6 +134,12 @@ def main():
     disp_cfg = config.get("display", {})
     driver_name = disp_cfg.get("driver", "auto")
     orientation = disp_cfg.get("orientation", disp_cfg.get("rotation", 0))
+    inky_kw = dict(
+        orientation=orientation,
+        h_flip=bool(disp_cfg.get("h_flip", False)),
+        v_flip=bool(disp_cfg.get("v_flip", False)),
+        pixel_pair_swap=bool(disp_cfg.get("pixel_pair_swap", False)),
+    )
 
     if driver_name == "auto":
         # Auto-detect a physical panel; fall back to a virtual display otherwise.
@@ -141,11 +147,11 @@ def main():
         detected = InkyDisplay.detect()
         if detected is not None:
             logger.info(f"[display] Auto-detected Inky panel: {detected}")
-            display = InkyDisplay(model=detected, orientation=orientation)
+            display = InkyDisplay(model=detected, **inky_kw)
         else:
             # Also try configured Inky model fallback in case I2C EEPROM auto-detection was unavailable
             fallback_model = disp_cfg.get("model", "impression_7_3")
-            try_display = InkyDisplay(model=fallback_model, orientation=orientation)
+            try_display = InkyDisplay(model=fallback_model, **inky_kw)
             if try_display._inky is not None:
                 logger.info(f"[display] Connected to Inky panel via model fallback: {fallback_model}")
                 display = try_display
@@ -162,7 +168,7 @@ def main():
         display = WaveshareDisplay(model=disp_cfg.get("model", "epd7in3f"), orientation=orientation)
     elif driver_name == "inky":
         from displays.inky import InkyDisplay
-        display = InkyDisplay(model=disp_cfg.get("model", "impression_7_3"), orientation=orientation)
+        display = InkyDisplay(model=disp_cfg.get("model", "impression_7_3"), **inky_kw)
     elif driver_name == "framebuffer":
         from displays.framebuffer import FramebufferDisplay
         display = FramebufferDisplay(orientation=orientation)

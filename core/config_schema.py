@@ -30,7 +30,7 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List, Tuple
 
-SUPPORTED_DRIVERS = {"virtual", "waveshare", "inky", "framebuffer"}
+SUPPORTED_DRIVERS = {"auto", "virtual", "waveshare", "inky", "framebuffer"}
 SUPPORTED_ORIENTATION = {0, 90, 180, 270}
 REFRESH_MODES = {"auto", "full"}
 _LANG_CODES = {"en","de","fr","es","it","nl","pt","pl","ru","ja","zh","ko"}

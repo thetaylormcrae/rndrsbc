@@ -54,7 +54,7 @@ def load_config(path=None):
         return migrated
     return {
         "device": {"name": "Raspberry Pi Zero 2W", "timezone": "America/New_York"},
-        "display": {"driver": "virtual", "model": "epd7in3f", "orientation": 0},
+        "display": {"driver": "auto", "model": "impression_7_3", "orientation": 0},
         "quiet_hours": {"enabled": False, "start": "23:00", "end": "06:00", "mode": "suspend"},
         "active_playlist": "main",
         "playlists": {
@@ -132,9 +132,24 @@ def main():
     # 2. Production Daemon + Web Dashboard
     config = load_config()
     disp_cfg = config.get("display", {})
-    driver_name = disp_cfg.get("driver", "virtual")
+    driver_name = disp_cfg.get("driver", "auto")
 
-    if driver_name == "waveshare":
+    if driver_name == "auto":
+        # Auto-detect a physical panel; fall back to a virtual display otherwise.
+        from displays.inky import InkyDisplay
+        detected = InkyDisplay.detect()
+        if detected is not None:
+            logger.info(f"[display] Auto-detected Inky panel: {detected}")
+            display = InkyDisplay(model=detected, orientation=disp_cfg.get("orientation", 0))
+        else:
+            logger.warning("[display] No physical e-paper detected; falling back to virtual display.")
+            from displays.virtual import VirtualDisplay
+            display = VirtualDisplay(
+                width=disp_cfg.get("width", 800),
+                height=disp_cfg.get("height", 480),
+                output_path=resolve("live_screen.png"),
+            )
+    elif driver_name == "waveshare":
         from displays.waveshare import WaveshareDisplay
         display = WaveshareDisplay(model=disp_cfg.get("model", "epd7in3f"), orientation=disp_cfg.get("orientation", 0))
     elif driver_name == "inky":

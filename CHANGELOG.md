@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.7.1 (2026-08-29)
+
+### Bug Fixes
+
+- **version**: Derive rndrsbc.__version__ from installed metadata
+  ([`3119e01`](https://github.com/thetaylormcrae/rndrsbc/commit/3119e011fe2ae22d39483ef9970d3e229ad83eb8))
+
+
 ## v0.7.0 (2026-08-29)
 
 ### Features

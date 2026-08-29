@@ -476,7 +476,7 @@ class WeatherWidget(BaseWidget):
                 {"name": "graphIconStep", "label": "Graph Icon Step (hours)", "type": "number", "default": 6},
                 {"name": "api_key", "label": "OpenWeatherMap API Key", "type": "string", "default": ""},
                 {"name": "frame", "label": "Frame Style", "type": "select",
-                 "options": ["Corner", "Rectangle", "None"], "default": "Corner"},
+                 "options": ["Corner", "Rectangle", "None"], "default": "None"},
             ]
         }
 
@@ -492,7 +492,7 @@ class WeatherWidget(BaseWidget):
         display_graph = settings.get("displayGraph", True)
         moon_phase = settings.get("moonPhase", False)
         graph_icon_step = int(settings.get("graphIconStep", 6) or 6)
-        frame_style = settings.get("frame", "Corner")
+        frame_style = settings.get("frame", "None")
         api_key = settings.get("api_key", "").strip()
         lang = settings.get("language", self.config.get("language", "en")) if hasattr(self, "config") else settings.get("language", "en")
 

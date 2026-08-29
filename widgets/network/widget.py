@@ -111,6 +111,4 @@ class NetworkWidget(BaseWidget):
             canvas.draw_text("No SSH? Scan QR on the onboarding widget for setup.",
                              (content.x, content.bottom - canvas.pt(14)), font=caption_font, fill="#aaaaaa")
 
-            if bounds is None:
-                canvas.draw_frame("Corner", color="#111111")
             return canvas.to_image()

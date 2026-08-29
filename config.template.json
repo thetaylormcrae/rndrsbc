@@ -3,7 +3,8 @@
   "display": {
     "driver": "virtual",
     "model": "epd7in3f",
-    "orientation": 0
+    "orientation": 0,
+    "saturation": 0.5
   },
   "device": {
     "name": "rndrSBC Frame",

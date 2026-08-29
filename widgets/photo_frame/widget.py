@@ -204,8 +204,6 @@ class PhotoFrameWidget(BaseWidget):
                 canvas.draw_text(photo["name"], (content.x + 8, content.bottom - canvas.pt(28)),
                                  font=cap_font, fill="#333333")
 
-            if bounds is None:
-                canvas.draw_frame("Corner", color="#888888")
 
             # Persist a 1-bit cache copy for future low-RAM ticks.
             try:

@@ -87,5 +87,5 @@ class SystemStatsWidget(BaseWidget):
             canvas.draw_text("Chromium Free  •  <15MB Peak RAM  •  35ms Refresh", (c4.x + canvas.pt(16), c4.bottom - canvas.pt(26)), font=font_meta, fill="#555555")
 
             if bounds is None:
-                canvas.draw_frame(settings.get("frame", "Corner"), color="#111111")
+                canvas.draw_frame(settings.get("frame", "None"), color="#111111")
             return canvas.to_image()

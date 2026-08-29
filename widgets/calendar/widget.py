@@ -71,7 +71,7 @@ class CalendarWidget(BaseWidget):
                 {"name": "caldav_user", "label": "CalDAV Username", "type": "string", "default": ""},
                 {"name": "caldav_pass", "label": "CalDAV Password", "type": "password", "default": ""},
                 {"name": "first_day_sunday", "label": "Week Starts On", "type": "select", "options": ["Sunday", "Monday"], "default": "Sunday"},
-                {"name": "frame", "label": "Frame Style", "type": "select", "options": ["Corner", "Rectangle", "None"], "default": "Corner"}
+                {"name": "frame", "label": "Frame Style", "type": "select", "options": ["Corner", "Rectangle", "None"], "default": "None"}
             ]
         }
 
@@ -149,7 +149,7 @@ class CalendarWidget(BaseWidget):
         caldav_url = settings.get("caldav_url", "")
         caldav_user = settings.get("caldav_user", "")
         caldav_pass = settings.get("caldav_pass", "")
-        frame_style = settings.get("frame", "Corner")
+        frame_style = settings.get("frame", "None")
         start_sunday = settings.get("first_day_sunday", True)
 
         lang = settings.get("language", self.config.get("language", "en"))

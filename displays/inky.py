@@ -280,7 +280,14 @@ class InkyDisplay(BaseDisplay):
                 busy_wait=busy_wait,
             )
             if result.ok:
-                logger.info(f"Successfully refreshed Inky Impression screen ({self.width}x{self.height}).")
+                logger.info(
+                    f"Successfully refreshed Inky Impression screen "
+                    f"({self.width}x{self.height}) in {result.elapsed_ms:.1f}ms "
+                    f"(start->end)")
+            elif result.retried:
+                logger.warning(
+                    f"Panel refresh recovered after auto-retry "
+                    f"({result.elapsed_ms:.1f}ms) - frame updated.")
             else:
                 logger.error(f"Panel update FAILED after {result.problems} - skipped this frame.")
         else:

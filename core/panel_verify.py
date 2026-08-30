@@ -107,21 +107,24 @@ class PanelVerify:
                             (time.time() - t0) * 1000.0, repr(retry_err))
                     logger.error("[PanelVerify] Auto-retry also failed: %r", retry_err)
                     return PanelResult(ok=False, retried=True,
-                                       problems=["stall", "retry_failed"])
+                                       problems=["stall", "retry_failed"],
+                                       elapsed_ms=(time.time() - t0) * 1000.0)
             return PanelResult(ok=True, retried=True, problems=[])
 
         if self._telemetry is not None:
             self._telemetry.record_panel_updated(elapsed * 1000.0, model, resolution)
-        return PanelResult(ok=True, retried=False, problems=[])
+        return PanelResult(ok=True, retried=False, problems=[],
+                           elapsed_ms=elapsed * 1000.0)
 
 
 class PanelResult:
     """Outcome of a verified panel refresh."""
 
-    def __init__(self, ok: bool, retried: bool, problems):
+    def __init__(self, ok: bool, retried: bool, problems, elapsed_ms: float = 0.0):
         self.ok = ok
         self.retried = retried
         self.problems = problems
+        self.elapsed_ms = elapsed_ms  # measured start-to-end refresh window
 
 
 class PanelStall:

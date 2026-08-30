@@ -88,16 +88,16 @@ def _default_for(key: str):
     if key == "display":
         return {"driver": "virtual", "model": "epd7in3f", "orientation": 0}
     if key == "active_playlist":
-        return "default"
+        return "setup"
     if key == "playlists":
-        # Minimal, onboarding-first default matching the packaged fresh config.
+        # Onboarding-only default matching the packaged fresh config: a device
+        # with a missing/partial config is by definition unclaimed, so pin it on
+        # the QR setup tile until an owner configures it via the dashboard.
         return {
-            "default": {
-                "name": "Default Rotation",
+            "setup": {
+                "name": "Setup",
                 "items": [
-                    {"widget": "onboarding", "duration_minutes": 30,
-                     "settings": {}},
-                    {"widget": "weather", "duration_minutes": 15,
+                    {"widget": "onboarding", "duration_minutes": 999,
                      "settings": {}},
                 ],
             }

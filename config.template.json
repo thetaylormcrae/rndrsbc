@@ -11,48 +11,16 @@
     "language": "en",
     "timezone": "UTC"
   },
-  "active_playlist": "default",
+  "active_playlist": "setup",
   "playlists": {
-    "default": {
-      "name": "Default",
+    "setup": {
+      "name": "Setup",
       "items": [
         {
           "widget": "onboarding",
-          "duration_minutes": 5,
+          "duration_minutes": 999,
           "settings": {
             "title": "Let's set up your display"
-          }
-        },
-        {
-          "widget": "clock",
-          "duration_minutes": 15,
-          "settings": {
-            "frame": "Corner"
-          }
-        },
-        {
-          "widget": "network",
-          "duration_minutes": 15,
-          "settings": {
-            "frame": "Corner"
-          }
-        },
-        {
-          "widget": "system_stats",
-          "duration_minutes": 15,
-          "settings": {
-            "frame": "Corner"
-          }
-        },
-        {
-          "widget": "weather",
-          "duration_minutes": 15,
-          "settings": {
-            "location": "New York City",
-            "latitude": 40.7128,
-            "longitude": -74.006,
-            "units": "imperial",
-            "frame": "Corner"
           }
         }
       ]

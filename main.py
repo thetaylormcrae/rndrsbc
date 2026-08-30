@@ -58,15 +58,18 @@ def load_config(path=None):
 def fresh_default_config():
     """Canonical config generated when no config.json exists on first boot.
 
-    Kept deliberately MINIMAL and onboarding-first: a brand-new, unconfigured
-    device has no credential-backed data sources, so the default playlist is
-    the QR ``onboarding`` claim tile followed only by lightweight widgets that
-    need no external credentials (clock / network / system_stats / weather).
+    Kept deliberately MINIMAL and **onboarding-only**: a brand-new, unclaimed
+    device has no credential-backed data sources and no owner, so the default
+    playlist pins the frame on the QR ``onboarding`` claim tile and nothing
+    else. The device stays on Setup until an owner claims it and configures
+    widgets through the dashboard, which then overwrites ``active_playlist``/
+    ``playlists`` with a real rotation.
 
-    Heavy, credential-dependent widgets (``calendar``, ``photo_frame``) are
-    deliberately OMITTED here: they have no data to render until the owner
-    claims the device and wires up a backend, and on an unconfigured frame
-    they would only produce a slow, empty render (previously ~34 s).
+    Credential/owner-dependent widgets (``clock``, ``network``,
+    ``system_stats``, ``weather``, ``calendar``, ``photo_frame``) are ALL
+    deliberately omitted: on an unclaimed frame they would only produce slow,
+    empty renders with no data to show, and cycling them would fight the
+    setup screen.
 
     This dict is the single source of truth; ``config.template.json`` is
     generated from it during packaging so the two can never drift again.
@@ -75,17 +78,16 @@ def fresh_default_config():
         "device": {"name": "Raspberry Pi Zero 2W", "timezone": "America/New_York"},
         "display": {"driver": "auto", "model": "impression_7_3", "orientation": 0},
         "quiet_hours": {"enabled": False, "start": "23:00", "end": "06:00", "mode": "suspend"},
-        "active_playlist": "default",
+        "active_playlist": "setup",
         "playlists": {
-            "default": {
-                "name": "Default",
+            # Onboarding-only: until the owner claims the device and updates it
+            # through the dashboard, the frame renders ONLY the QR setup tile.
+            "setup": {
+                "name": "Setup",
                 "items": [
-                    {"widget": "onboarding", "duration_minutes": 5, "settings": {"title": "Let's set up your display"}},
-                    {"widget": "clock", "duration_minutes": 15, "settings": {"frame": "Corner"}},
-                    {"widget": "network", "duration_minutes": 15, "settings": {"frame": "Corner"}},
-                    {"widget": "system_stats", "duration_minutes": 15, "settings": {"frame": "Corner"}},
-                    {"widget": "weather", "duration_minutes": 15, "settings": {"location": "New York City", "latitude": 40.7128, "longitude": -74.0060, "units": "imperial", "frame": "Corner"}},
-                ]
+                    {"widget": "onboarding", "duration_minutes": 999,
+                     "settings": {"title": "Let's set up your display"}},
+                ],
             }
         }
     }

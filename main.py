@@ -52,18 +52,39 @@ def load_config(path=None):
             except Exception as e:  # noqa: BLE001
                 logger.warning(f"could not persist migrated config: {e}")
         return migrated
+    return fresh_default_config()
+
+
+def fresh_default_config():
+    """Canonical config generated when no config.json exists on first boot.
+
+    Kept deliberately MINIMAL and onboarding-first: a brand-new, unconfigured
+    device has no credential-backed data sources, so the default playlist is
+    the QR ``onboarding`` claim tile followed only by lightweight widgets that
+    need no external credentials (clock / network / system_stats / weather).
+
+    Heavy, credential-dependent widgets (``calendar``, ``photo_frame``) are
+    deliberately OMITTED here: they have no data to render until the owner
+    claims the device and wires up a backend, and on an unconfigured frame
+    they would only produce a slow, empty render (previously ~34 s).
+
+    This dict is the single source of truth; ``config.template.json`` is
+    generated from it during packaging so the two can never drift again.
+    """
     return {
         "device": {"name": "Raspberry Pi Zero 2W", "timezone": "America/New_York"},
         "display": {"driver": "auto", "model": "impression_7_3", "orientation": 0},
         "quiet_hours": {"enabled": False, "start": "23:00", "end": "06:00", "mode": "suspend"},
-        "active_playlist": "main",
+        "active_playlist": "default",
         "playlists": {
-            "main": {
-                "name": "Main Rotation",
+            "default": {
+                "name": "Default",
                 "items": [
                     {"widget": "onboarding", "duration_minutes": 5, "settings": {"title": "Let's set up your display"}},
+                    {"widget": "clock", "duration_minutes": 15, "settings": {"frame": "Corner"}},
+                    {"widget": "network", "duration_minutes": 15, "settings": {"frame": "Corner"}},
+                    {"widget": "system_stats", "duration_minutes": 15, "settings": {"frame": "Corner"}},
                     {"widget": "weather", "duration_minutes": 15, "settings": {"location": "New York City", "latitude": 40.7128, "longitude": -74.0060, "units": "imperial", "frame": "Corner"}},
-                    {"widget": "calendar", "duration_minutes": 30, "settings": {"title": "My Schedule", "first_day_sunday": True, "frame": "Corner"}}
                 ]
             }
         }

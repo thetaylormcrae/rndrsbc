@@ -14,13 +14,47 @@
   "active_playlist": "default",
   "playlists": {
     "default": {
+      "name": "Default",
       "items": [
-        {"widget": "onboarding", "duration_minutes": 15, "settings": {}},
-        {"widget": "weather", "duration_minutes": 15, "settings": {}},
-        {"widget": "network", "duration_minutes": 15, "settings": {}},
-        {"widget": "calendar", "duration_minutes": 15, "settings": {}},
-        {"widget": "photo_frame", "duration_minutes": 15, "settings": {}},
-        {"widget": "system_stats", "duration_minutes": 15, "settings": {}}
+        {
+          "widget": "onboarding",
+          "duration_minutes": 5,
+          "settings": {
+            "title": "Let's set up your display"
+          }
+        },
+        {
+          "widget": "clock",
+          "duration_minutes": 15,
+          "settings": {
+            "frame": "Corner"
+          }
+        },
+        {
+          "widget": "network",
+          "duration_minutes": 15,
+          "settings": {
+            "frame": "Corner"
+          }
+        },
+        {
+          "widget": "system_stats",
+          "duration_minutes": 15,
+          "settings": {
+            "frame": "Corner"
+          }
+        },
+        {
+          "widget": "weather",
+          "duration_minutes": 15,
+          "settings": {
+            "location": "New York City",
+            "latitude": 40.7128,
+            "longitude": -74.006,
+            "units": "imperial",
+            "frame": "Corner"
+          }
+        }
       ]
     }
   }

@@ -136,7 +136,8 @@ sudo systemctl enable --now rndrSBC
 **conventional commits**:
 
 - `feat:` → minor · `fix:` → patch · `BREAKING`/`feat!:` → major (on the `0.x` line, breaking bumps the minor digit)
-- Merging to `main` auto-bumps `core/__init__.py`, regenerates `CHANGELOG.md`, cuts the `vX.Y.Z` tag, and publishes to PyPI (`publish.yml`, trusted publishing / OIDC).
+- Merging to `main` auto-bumps `core/__init__.py`, regenerates `CHANGELOG.md`, cuts the `vX.Y.Z` tag, and publishes to PyPI — all **inline in `release.yml`** (trusted publishing / OIDC). The tagging step and the publish step are sequential in one job, so an Actions-created tag can never be silently lost to GitHub's workflow-trigger suppression.
+- Your PyPI trusted publisher must map **`Workflow → release.yml`** (not `publish.yml`); `publish.yml` remains only as a manual/hands-on re-publisher.
 - Deploy-side state is **never touched** by an upgrade — `pip install -U rndrsbc` is the whole upgrade.
 
 ## License

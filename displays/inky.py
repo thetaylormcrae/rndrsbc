@@ -5,8 +5,12 @@ Matches InkyPi architecture for reliable 7-color / 6-color e-paper rendering.
 """
 
 import logging
+import threading
 from PIL import Image
 from displays.base import BaseDisplay
+
+from core.telemetry import TELEMETRY
+from core.panel_verify import PanelVerify
 
 logger = logging.getLogger("rndrSBC.inky")
 
@@ -76,6 +80,7 @@ class InkyDisplay(BaseDisplay):
         self.orientation = orientation
         self.saturation = saturation
         self._inky = None
+        self._verify = PanelVerify(TELEMETRY)
 
         _patch_inky_spectra6()
         base_dims = self._PRESETS.get(model, (800, 480))
@@ -255,9 +260,29 @@ class InkyDisplay(BaseDisplay):
         image = self._quantize_primaries(image)
 
         if self._inky is not None:
-            self._inky.set_image(image, saturation=self.saturation)
-            self._inky.show()
-            logger.info(f"Successfully refreshed Inky Impression screen ({self.width}x{self.height}).")
+
+            def push():
+                self._inky.set_image(image, saturation=self.saturation)
+                self._inky.show()
+
+            # Best-effort EPD BUSY probe (only on real hardware). The e673
+            # driver exposes `_busy_wait`; we bound it so a stuck panel never
+            # blocks the scheduler. On mock/virtual paths there is no probe and
+            # verification simply reports the write window, exactly as before.
+            busy_wait = None
+            if hasattr(self._inky, "_busy_wait"):
+                busy_wait = self._inky._busy_wait
+
+            result = self._verify.run(
+                push,
+                model=self.model,
+                resolution=(self.width, self.height),
+                busy_wait=busy_wait,
+            )
+            if result.ok:
+                logger.info(f"Successfully refreshed Inky Impression screen ({self.width}x{self.height}).")
+            else:
+                logger.error(f"Panel update FAILED after {result.problems} - skipped this frame.")
         else:
             logger.info(f"[Inky Mock] Flashed image {image.size} in {self.model} mode.")
 

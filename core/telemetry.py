@@ -47,6 +47,15 @@ class SystemTelemetry:
         if self.consecutive_failures in (3, 5, 10):
             self.send_alert(f"⚠️ [rndrSBC Alert] {self.consecutive_failures} consecutive render failures! Last error: {self.last_error_message}")
 
+    def record_panel_updated(self, duration_ms: float, model: str, resolution: tuple):
+        self._add_event("panel_updated", f"Successfully refreshed {model} ({resolution[0]}x{resolution[1]}) in {duration_ms:.1f}ms")
+
+    def record_panel_stall(self, duration_ms: float, error_str: str):
+        self._add_event("panel_stall", f"Panel refresh stall after {duration_ms:.1f}ms: {error_str}")
+
+    def record_panel_busy_wait(self, timeout_s: float):
+        self._add_event("panel_busy_wait", f"Waited for EPD BUSY (timeout {timeout_s}s)")
+
     def _add_event(self, event_type: str, message: str):
         entry = {
             "timestamp": time.time(),

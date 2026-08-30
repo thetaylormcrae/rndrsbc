@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.7.7 (2026-08-30)
+
+### Bug Fixes
+
+- **boot**: Stop crash-loop when config.json is missing required playlist keys
+  ([`805a6c2`](https://github.com/thetaylormcrae/rndrsbc/commit/805a6c27c063952d3a3842c903975d30889bfd2b))
+
+
 ## v0.7.6 (2026-08-30)
 
 ### Bug Fixes

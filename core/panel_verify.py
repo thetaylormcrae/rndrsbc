@@ -3,12 +3,14 @@ rndrSBC - Panel Update Verification & SPI Serialization.
 
 Closing the gap between ``render succeeded`` and ``panel actually changed``.
 
-The e673 driver's ``show()`` is fire-and-forget from the caller's perspective:
-it returns when the SPI write sequence has *completed*, not when the panel has
-*confirmed* the frame. Three real failure modes produce an "intermittently off"
-display even though the render (and `screen.png` preview) were correct:
+The Pimoroni ``e673`` (Spectra 6) driver is *blocking*: ``show()`` drives the
+full start-to-end refresh sequence synchronously, and ``_update()`` embeds a
+``_busy_wait(32.0)`` after the DRF waveform so it does not return until the
+frame has been driven onto the panel (or a bounded 32 s fallback sleep on
+unreadable BUSY). So ``show()`` itself already covers the complete refresh
+window; the remaining risks are concurrency, not the driver's write lifetime:
 
-  1. Overlapping   calls are interleaved on the shared SPI bus. The scheduler
+  1. Overlapping calls are interleaved on the shared SPI bus. The scheduler
      runs in a background thread while HTTP (`/api/refresh`) and button threads
      can also call ``display.update``. Without serialization a second ``show()``
      can cut off the first mid-waveform, leaving the panel dark until the next
@@ -16,10 +18,10 @@ display even though the render (and `screen.png` preview) were correct:
   2. Stacking onto a panel still mid-waveform (EPD BUSY held high).
   3. A write that completes but the panel fails to latch the frame.
 
-This module:
-  - serializes panel access with a per-instance lock,
-  - probes the EPD BUSY state (via the driver's own wait, when available),
-  - measures the refresh window and flags any stall,
+This module adds hard guarantees on top of the driver's blocking push:
+  - serializes panel access with a per-instance lock (single `update()` at a time),
+  - gates on the EPD BUSY state before writing (via the driver's own wait),
+  - measures the full start-to-end refresh window and flags any stall,
   - retries a failed refresh once automatically,
   - emits distinct telemetry (`panel_updated` / `panel_stalled`) so the
     intermittent failure becomes visible instead of a lying success log.

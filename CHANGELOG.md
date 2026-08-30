@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.7.6 (2026-08-30)
+
+### Bug Fixes
+
+- **buttons**: Remap defaults off the display driver's pins; skip+skip-warn on collision
+  ([`d357a4a`](https://github.com/thetaylormcrae/rndrsbc/commit/d357a4a50579e9af02fb52bf8850e2f690d4f08e))
+
+
 ## v0.7.5 (2026-08-30)
 
 ### Bug Fixes

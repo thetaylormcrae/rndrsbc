@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v0.7.2 (2026-08-30)
+
+### Bug Fixes
+
+- **display**: Verify panel update, serialize SPI, auto-retry stalls
+  ([`81d7b58`](https://github.com/thetaylormcrae/rndrsbc/commit/81d7b58f3b54d1b4a73196e79d6e50d0522ac500))
+
+### Chores
+
+- **deploy**: Consolidate Pi setup into deploy/bootstrap.sh
+  ([`6013028`](https://github.com/thetaylormcrae/rndrsbc/commit/601302837702cff941954649752d4efb626f2a2d))
+
+### Continuous Integration
+
+- **release**: Publish inline in release job + add deterministic Pi bootstrap
+  ([`8ee9e79`](https://github.com/thetaylormcrae/rndrsbc/commit/8ee9e79cab58a89bfea63584cd69490a61f8bac1))
+
+
 ## v0.7.1 (2026-08-29)
 
 ### Bug Fixes

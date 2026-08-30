@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.8.1 (2026-08-30)
+
+### Bug Fixes
+
+- **security**: Require authentication before serving any config, media, or control endpoint once
+  admin password is set
+  ([`cf8ca5d`](https://github.com/thetaylormcrae/rndrsbc/commit/cf8ca5da791a9ef94683b1d4a02225167451ca78))
+
+
 ## v0.8.0 (2026-08-30)
 
 ### Features

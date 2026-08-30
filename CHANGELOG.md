@@ -2,6 +2,24 @@
 
 <!-- version list -->
 
+## v0.7.3 (2026-08-30)
+
+### Bug Fixes
+
+- **display**: Surface start-to-end refresh duration in logs
+  ([`9317ad3`](https://github.com/thetaylormcrae/rndrsbc/commit/9317ad3d49e4a4cd907e2d64bb1be6d55a0d7c85))
+
+### Chores
+
+- **deploy**: Delegate Pi install to rndrsbc-deploy repo
+  ([`8844e85`](https://github.com/thetaylormcrae/rndrsbc/commit/8844e8501abe689f2fee6b5f9e002556d39df599))
+
+### Documentation
+
+- **panel_verify**: Correct e673 push semantics
+  ([`a95672d`](https://github.com/thetaylormcrae/rndrsbc/commit/a95672df83250b629f22958e81834d5efe30c935))
+
+
 ## v0.7.2 (2026-08-30)
 
 ### Bug Fixes

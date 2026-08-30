@@ -63,7 +63,14 @@ def validate_config(raw: Any) -> Tuple[Dict[str, Any], List[str]]:
 
     for key, (typ,) in _REQUIRED_TOP.items():
         if key not in raw:
-            problems.append(f"{key}: required top-level key is missing")
+            # Self-heal: a partial/corrupt/legacy on-disk config must never
+            # hard-crash an unattended device at boot. Fill the missing required
+            # key with a safe default and flag it so the operator can see why.
+            raw[key] = _default_for(key)
+            warnings.append(
+                f"{key}: required top-level key was missing - regenerated, "
+                f"consider re-saving config from the dashboard"
+            )
         elif not isinstance(raw[key], typ):
             problems.append(f"{key}: expected {typ.__name__}")
 
@@ -74,6 +81,28 @@ def validate_config(raw: Any) -> Tuple[Dict[str, Any], List[str]]:
     if problems:
         raise ConfigError("; ".join(problems))
     return raw, warnings
+
+
+def _default_for(key: str):
+    """Safe value used to self-heal a missing required top-level key."""
+    if key == "display":
+        return {"driver": "virtual", "model": "epd7in3f", "orientation": 0}
+    if key == "active_playlist":
+        return "default"
+    if key == "playlists":
+        # Minimal, onboarding-first default matching the packaged fresh config.
+        return {
+            "default": {
+                "name": "Default Rotation",
+                "items": [
+                    {"widget": "onboarding", "duration_minutes": 30,
+                     "settings": {}},
+                    {"widget": "weather", "duration_minutes": 15,
+                     "settings": {}},
+                ],
+            }
+        }
+    return {}
 
 
 def _validate_display(disp: Any, problems: List[str], warnings: List[str]) -> None:

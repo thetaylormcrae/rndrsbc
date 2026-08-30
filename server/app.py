@@ -1856,12 +1856,18 @@ class ProductionHandler(QuietHandler):
                         d.pop("height", None)
 
 
-                # Preserve admin password hash
+                # Preserve critical keys that a partial/naive client payload
+                # might omit. A dashboard save must never strip the playlist/
+                # rotation config off disk, or the next boot hard-crashes with
+                # "active_playlist/playlists required missing".
                 if os.path.exists(self.config_path):
                     with open(self.config_path, "r") as f:
                         old_cfg = json.load(f)
                         if "admin_password_hash" in old_cfg and "admin_password_hash" not in cfg_obj:
                             cfg_obj["admin_password_hash"] = old_cfg["admin_password_hash"]
+                        for _k in ("active_playlist", "playlists", "schema_version"):
+                            if _k in old_cfg and _k not in cfg_obj:
+                                cfg_obj[_k] = old_cfg[_k]
 
                 with open(self.config_path, "w") as f:
                     json.dump(cfg_obj, f, indent=2)

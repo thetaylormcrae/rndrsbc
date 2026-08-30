@@ -21,13 +21,19 @@ logger = logging.getLogger("rndrSBC.onboarding")
 
 # ---------------------------------------------------------------------------
 # QoS / configuration paths
+#
+# IMPORTANT: use the canonical resolver (core.paths), NOT this file's ``__file__``.
+# In a PyPI/site-installed deployment ``__file__`` sits inside the read-only
+# site-packages tree, so a relative path points at a phantom config that the
+# boot path (core.paths.CONFIG_PATH -> $RNDRSBC_HOME/config.json) never reads.
+# The onboarding-first default made the QR flow the first thing a fresh boot
+# runs, so a divergent path here silently separated onboarding state from the
+# real runtime config.
 # ---------------------------------------------------------------------------
-CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "config.json")
+from core.paths import CONFIG_PATH, CLAIM_TOKEN_PATH  # noqa: E402
 
-# ---------------------------------------------------------------------------
-# QR Claim-Token State (volatile; unclaimed tokens survive process restart)
-# ---------------------------------------------------------------------------
-_CLAIM_TOKEN_PATH = os.path.join(os.path.dirname(__file__), "..", ".claim_token")
+# Back-compat aliases (external callers may import the old names).
+_CLAIM_TOKEN_PATH = CLAIM_TOKEN_PATH
 _CLAIM_TOKEN_TTL_SECS = 60 * 60  # 1 hour
 
 # In-memory cache to avoid re-reading state file every request

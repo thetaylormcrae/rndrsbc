@@ -13,6 +13,15 @@
   },
   "active_playlist": "default",
   "playlists": {
-    "default": ["weather", "network", "calendar", "photo_frame", "system_stats"]
+    "default": {
+      "items": [
+        {"widget": "onboarding", "duration_minutes": 15, "settings": {}},
+        {"widget": "weather", "duration_minutes": 15, "settings": {}},
+        {"widget": "network", "duration_minutes": 15, "settings": {}},
+        {"widget": "calendar", "duration_minutes": 15, "settings": {}},
+        {"widget": "photo_frame", "duration_minutes": 15, "settings": {}},
+        {"widget": "system_stats", "duration_minutes": 15, "settings": {}}
+      ]
+    }
   }
 }

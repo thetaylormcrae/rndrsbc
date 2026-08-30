@@ -1178,6 +1178,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">🖼️ Photo Library</div>
       <input type="file" id="photo-upload" accept="image/*" class="text-[10px] text-slate-400 mb-2 w-full" />
       <button onclick="uploadPhoto()" class="text-[10px] px-2 py-1 rounded bg-pink-600/80 hover:bg-pink-500 text-white">Upload Photo</button>
+      <button onclick="loadPhotos()" class="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Refresh</button>
       <div id="photos-content" class="mt-2 text-[11px] text-slate-500"></div>
     </div>
   </div>
@@ -1187,13 +1188,20 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       try {
         const r = await fetch('/api/telemetry');
         const t = await r.json();
-        document.getElementById('telemetry-content').innerHTML =
-          `<div>Health: <strong class="${t.health === 'healthy' ? 'text-emerald-400' : 'text-rose-400'}">${t.health}</strong></div>` +
-          `<div>Uptime: ${t.uptime_human}</div>` +
-          `<div>Renders: ${t.render_count} · Errors: ${t.error_count}</div>` +
-          `<div>Last render: ${t.last_render_duration_ms}ms</div>` +
+        const el = document.getElementById('telemetry-content');
+        if (!r.ok || t.error) {
+          el.innerHTML = `<div class="text-amber-400">Sign in to view device health${t.error ? ' (' + t.error + ')' : ''}</div>`;
+          return;
+        }
+        const health = t.health === 'healthy' ? 'text-emerald-400' : 'text-rose-400';
+        const healthTxt = t.health || 'unknown';
+        el.innerHTML =
+          `<div>Health: <strong class="${health}">${healthTxt}</strong></div>` +
+          `<div>Uptime: ${t.uptime_human || '—'}</div>` +
+          `<div>Renders: ${t.render_count ?? '—'} · Errors: ${t.error_count ?? '—'}</div>` +
+          `<div>Last render: ${t.last_render_duration_ms != null ? t.last_render_duration_ms + 'ms' : '—'}</div>` +
           (t.last_error ? `<div class="text-rose-400">⚠ ${t.last_error}</div>` : '');
-      } catch (e) { document.getElementById('telemetry-content').innerHTML = '<div>Auth required</div>'; }
+      } catch (e) { document.getElementById('telemetry-content').innerHTML = '<div class="text-amber-400">Monitoring unavailable</div>'; }
     }
 
     async function checkUpdate() {
@@ -1224,10 +1232,38 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       fd.append('file', fileInput.files[0]);
       const r = await fetch('/api/photos/upload', { method: 'POST', body: fd });
       const resp = await r.json();
-      document.getElementById('photos-content').innerHTML = `<div class="text-emerald-400">${resp.path} uploaded</div>`;
+      document.getElementById('photos-content').innerHTML = `<div class="text-emerald-400">${resp.path || resp.error || 'uploaded'} ${resp.error ? '(failed)' : ''}</div>`;
+      fileInput.value = '';
+      loadPhotos();
+    }
+
+    async function loadPhotos() {
+      const el = document.getElementById('photos-content');
+      try {
+        const r = await fetch('/api/photos');
+        const d = await r.json();
+        if (!r.ok || d.error) { el.innerHTML = `<div class="text-amber-400">Unable to load photos${d.error ? ': ' + d.error : ''}</div>`; return; }
+        const photos = d.photos || [];
+        if (!photos.length) { el.innerHTML = '<div class="text-slate-500">No photos yet — upload one above.</div>'; return; }
+        el.innerHTML = photos.map((p) =>
+          `<div class="flex items-center gap-2 justify-between py-1 border-b border-slate-800/60">` +
+            `<span class="truncate max-w-[160px]" title="${(p.path || '').replace(/"/g, '&quot;')}">🖼️ ${p.name}${p.album ? ' <span class="text-slate-600">(' + p.album + ')</span>' : ''} ${p.width ? '· ' + p.width + '×' + p.height + ' · ' + Math.round(p.size/1024) + 'KB' : ''}</span>` +
+            `<button onclick="deletePhoto('${(p.path || '').replace(/'/g, "\\'")}')" class="text-[10px] px-2 py-0.5 rounded hover:bg-rose-950/70 text-slate-500 hover:text-rose-400 border border-slate-800">Delete</button>` +
+          `</div>`
+        ).join('');
+      } catch (e) { el.innerHTML = '<div class="text-amber-400">Photo library unavailable</div>'; }
+    }
+
+    async function deletePhoto(path) {
+      if (!confirm('Delete this photo?\n' + path)) return;
+      const r = await fetch('/api/photos/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: path }) });
+      const d = await r.json().catch(() => ({}));
+      document.getElementById('photos-content').innerHTML = `<div class="${r.ok ? 'text-emerald-400' : 'text-rose-400'}">${d.message || d.error || 'done'}</div>`;
+      loadPhotos();
     }
 
     loadTelemetry();
+    loadPhotos();
     checkUpdate();
   </script>
 </body>
@@ -1345,6 +1381,34 @@ class ProductionHandler(QuietHandler):
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
                 self.wfile.write(json.dumps({"photos": [], "error": str(e)}).encode("utf-8"))
+            return
+
+        # 1e. Delete an uploaded photo (protected)
+        if parsed.path == "/api/photos/delete" and self.command == "POST":
+            try:
+                if not self._is_authenticated():
+                    self.send_response(401); self.send_header("Content-Type", "application/json"); self.end_headers()
+                    self.wfile.write(b'{"error":"Authentication required"}'); return
+                length = int(self.headers.get("Content-Length", 0))
+                payload = json.loads(self.rfile.read(length).decode("utf-8") or "{}")
+                target = (payload.get("path") or "").strip()
+                from widgets.photo_frame.widget import PHOTO_DIR
+                import os as _os
+                base = _os.path.realpath(PHOTO_DIR)
+                cand = _os.path.realpath(target)
+                if not cand.startswith(base + _os.sep):
+                    self.send_response(400); self.send_header("Content-Type", "application/json"); self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Refusing to delete outside photo library"}).encode("utf-8")); return
+                if _os.path.isfile(cand):
+                    _os.remove(cand)
+                    msg = f"Deleted {_os.path.basename(cand)}"
+                else:
+                    msg = f"Not found: {target}"
+                self.send_response(200); self.send_header("Content-Type", "application/json"); self.end_headers()
+                self.wfile.write(json.dumps({"message": msg}).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500); self.send_header("Content-Type", "application/json"); self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
             return
 
         # 2. Onboarding status + QR (available pre-auth so the setup flow can start)

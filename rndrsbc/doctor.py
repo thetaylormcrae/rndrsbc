@@ -164,7 +164,7 @@ def check_display_paths():
         os.remove(probe)
         rows.append(("deploy_writable", "yes", "ok"))
     except OSError:
-        hint = " — run `bootstrap.sh --home <dir>` (deploy home not writable)" if home_missing else ""
+        hint = " — make the deploy home writable or run the rndrsbc-deploy installer with the right service user (github.com/thetaylormcrae/rndrsbc-deploy)" if home_missing else ""
         rows.append(("deploy_writable", f"{hint.strip() or 'read-only!'}", "fail"))
     return rows
 

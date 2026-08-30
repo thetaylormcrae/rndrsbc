@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.7.5 (2026-08-30)
+
+### Bug Fixes
+
+- **config**: Fresh-device default is onboarding-first, omits calendar/photo_frame
+  ([`5c3fd81`](https://github.com/thetaylormcrae/rndrsbc/commit/5c3fd814e01ff8614ba4b08ef3705f1df0a2e39b))
+
+
 ## v0.7.4 (2026-08-30)
 
 ### Bug Fixes

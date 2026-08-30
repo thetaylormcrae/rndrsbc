@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.7.4 (2026-08-30)
+
+### Bug Fixes
+
+- **dashboard**: Correct default playlist schema, telemetry, and photo management
+  ([`fe896a8`](https://github.com/thetaylormcrae/rndrsbc/commit/fe896a872339e5738cd9540996f3ba2846959bca))
+
+
 ## v0.7.3 (2026-08-30)
 
 ### Bug Fixes

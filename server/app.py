@@ -474,6 +474,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     let currentConfig = null;
     let selectedPlaylistKey = "main";
     let isAuthenticated = false;
+    let setupRequired = false;
     const weatherMaps = {};
 
     async function checkAuthStatus() {
@@ -481,9 +482,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         const res = await fetch('/api/auth/status');
         const data = await res.json();
         if (data.setup_required) {
+          setupRequired = true;
           document.getElementById('modal-setup').classList.remove('hidden');
           return false;
         }
+        setupRequired = false;
         isAuthenticated = data.authenticated;
         if (isAuthenticated) {
           document.getElementById('btn-logout').classList.remove('hidden');
@@ -522,8 +525,17 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
       if (res.ok) {
         document.getElementById('modal-setup').classList.add('hidden');
-        checkAuthStatus();
-        loadStatus();
+        // The setup password is now the admin password; log straight in so the
+        // freshly-authenticated session can load the dashboard without a second
+        // login prompt.
+        const loginRes = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({password: p1})
+        });
+        hideLoginModal();
+        await checkAuthStatus();
+        await loadStatus();
       } else {
         const data = await res.json();
         err.textContent = data.error || "Setup failed.";
@@ -554,7 +566,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
       if (res.ok) {
         hideLoginModal();
-        checkAuthStatus();
+        await checkAuthStatus();
+        await loadStatus();
       } else {
         err.textContent = "Invalid administrator password.";
         err.classList.remove('hidden');
@@ -1152,6 +1165,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     // Initialize
     (async () => {
       await checkAuthStatus();
+      // Gate the management UI behind authentication once an admin password
+      // exists: a device that has finished onboarding must not expose its
+      // configuration, photo library, or live screen to an unauthenticated
+      // visitor. Before setup completes we still load (the setup flow needs it).
+      if (!isAuthenticated && !setupRequired) {
+        showLoginModal();
+        return;
+      }
       await loadStatus();
       setInterval(() => {
         const img = document.getElementById('live-screen-img');
@@ -1326,6 +1347,21 @@ class ProductionHandler(QuietHandler):
                 pass
         return False
 
+    def _require_auth(self) -> bool:
+        """Require an authenticated session once an admin password exists.
+        Returns True when the request is permitted; writes a 401 response and
+        returns False when access is denied. Before an admin password is set the
+        device is in first-run/setup state, so management endpoints stay open so
+        the local onboarding flow can configure the device."""
+        if self._has_admin_setup() and not self._is_authenticated():
+            self.send_response(401)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(b'{"error":"Authentication required"}')
+            return False
+        return True
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         
@@ -1369,6 +1405,8 @@ class ProductionHandler(QuietHandler):
 
         # 1d. Uploaded photos list (protected)
         if parsed.path == "/api/photos":
+            if not self._require_auth():
+                return
             try:
                 from widgets.photo_frame.widget import list_photos
                 photos = list_photos()
@@ -1469,6 +1507,8 @@ class ProductionHandler(QuietHandler):
 
         # 3. Read config
         if parsed.path == "/api/config":
+            if not self._require_auth():
+                return
             if os.path.exists(self.config_path):
                 with open(self.config_path, "r") as f:
                     data_obj = json.load(f)
@@ -1489,6 +1529,8 @@ class ProductionHandler(QuietHandler):
 
         # 4. Geocoding proxy
         if parsed.path == "/api/geocode" and parsed.query:
+            if not self._require_auth():
+                return
             qs = urllib.parse.parse_qs(parsed.query)
             query = (qs.get("q") or [""])[0].strip()
             if not query:
@@ -1515,6 +1557,8 @@ class ProductionHandler(QuietHandler):
 
         # 5. Live Screen Mirror
         if parsed.path == "/api/screen.png":
+            if not self._require_auth():
+                return
             img = None
             # Prefer the COLOR pre-dither frame for the web preview, so the
             # live mirror shows true colors instead of the 1-bit panel frame.
@@ -1575,6 +1619,21 @@ class ProductionHandler(QuietHandler):
         parsed = urllib.parse.urlparse(self.path)
         length = int(self.headers.get("Content-Length", 0))
         raw_body = self.rfile.read(length) if length > 0 else b"{}"
+
+        # Global authorization gate. Once an admin password exists on the device,
+        # every mutating request must come from an authenticated session EXCEPT the
+        # narrow pre-auth flow (first-run setup, login, logout, and the claim-token
+        # onboarding sequence). Everything else - config writes, photo uploads, and
+        # especially power/update operations - is locked down.
+        PRE_AUTH_PATHS = (
+            "/api/setup",
+            "/api/auth/login",
+            "/api/auth/logout",
+            "/api/onboarding/claim",
+        )
+        if parsed.path not in PRE_AUTH_PATHS:
+            if not self._require_auth():
+                return
 
         # 1. First-Run Setup (Enforce password >= 8 characters)
         if parsed.path == "/api/setup":

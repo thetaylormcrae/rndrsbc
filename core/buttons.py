@@ -29,10 +29,16 @@ except Exception:
 class ButtonController:
     """Debounced physical button listener mapped to scheduler actions."""
 
+    # NOTE: these must NOT overlap the e-paper driver's own lines. The Pimoroni
+    # Inky HAT / recent Inky boards drive BUSY=17, RESET=27 and DC=22, and the
+    # SPI bus uses 8/9/10/11 — so the old defaults (17/27/22) collided with the
+    # display every boot ("channel already in use") and left some buttons dead.
+    # 5/6/12 are free general-purpose header pins shared with neither the
+    # display, the SPI bus, nor I2C (0/1/2/3). Override via ``buttons: pins``.
     DEFAULT_PINS = {
-        "next": 17,
-        "prev": 27,
-        "toggle": 22,
+        "next": 5,
+        "prev": 6,
+        "toggle": 12,
     }
 
     def __init__(self, scheduler, config: dict, pins: dict = None):
@@ -102,12 +108,45 @@ class ButtonController:
             return
         try:
             GPIO.setmode(GPIO.BCM)
-            for action, pin in self.pins.items():
-                logger.info("Configuring %s button on GPIO %d", action, pin)
-                GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
-                self._last_state[action] = GPIO.input(pin)
         except Exception as e:
-            logger.error(f"Failed to configure GPIO buttons: {e}")
+            logger.error(f"Failed to set GPIO mode: {e}")
+            return
+
+        # Track skipped pins so _poll never reads a pin we don't own. A pin that
+        # an earlier subsystem (the e-paper driver) has already configured as an
+        # OUTPUT is not ours: claiming it would trip RPi.GPIO's noisy
+        # "channel already in use" warning and alias the display's line.
+        skipped = {}
+        for action, pin in self.pins.items():
+            try:
+                # Probe current state without disturbing a foreign setup.
+                inp = GPIO.input(pin)
+            except Exception:
+                inp = None
+            try:
+                GPIO.setup(pin, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+            except Exception as e:
+                skipped[action] = (pin, str(e))
+                logger.warning(
+                    "Button '%s' on GPIO %d could not be claimed by RPi.GPIO "
+                    "(likely owned by the display driver): skipping. %s",
+                    action, pin, e,
+                )
+                continue
+            self._last_state[action] = GPIO.input(pin)
+            logger.info("Configuring %s button on GPIO %d", action, pin)
+
+        if skipped:
+            logger.warning(
+                "Physical buttons active on pins %s; unsupported pins: %s",
+                list(self.pins.keys()), skipped,
+            )
+
+        # Drop skipped pins so _poll only ever touches pins we own.
+        self.pins = {a: p for a, p in self.pins.items() if a not in skipped}
+
+        if not self.pins or not self._last_state:
+            logger.warning("No usable button pins - physical buttons disabled.")
             return
         self._running = True
         self._thread = threading.Thread(target=self._poll, daemon=True, name="rndrSBC-Buttons")

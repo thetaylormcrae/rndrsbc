@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.8.0 (2026-08-30)
+
+### Features
+
+- **onboarding**: Pin fresh device on setup tile until configured via dashboard
+  ([`a7ef377`](https://github.com/thetaylormcrae/rndrsbc/commit/a7ef377f0415defb430a0c412f2adbbd046076ae))
+
+
 ## v0.7.7 (2026-08-30)
 
 ### Bug Fixes

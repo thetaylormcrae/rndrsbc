@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.8.3 (2026-08-31)
+
+### Bug Fixes
+
+- **qa**: Comprehensive end-to-end QA test suite, zero-warning schema validation, and widget
+  attribute safety
+  ([`7e8a7d0`](https://github.com/thetaylormcrae/rndrsbc/commit/7e8a7d0e2ec8a0a2df991bf20f8e888bde8eca9f))
+
+
 ## v0.8.2 (2026-08-31)
 
 ### Bug Fixes

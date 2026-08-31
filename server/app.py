@@ -2475,6 +2475,10 @@ class ProductionHandler(QuietHandler):
 
                 from widgets.photo_frame.widget import save_photo
                 photo_path = save_photo(found_file, filename or "photo.jpg")
+                # Repaint the panel immediately so the upload shows up instead
+                # of leaving the previous frame up until the next rotation tick.
+                if self.scheduler is not None:
+                    self.scheduler.refresh_display()
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()

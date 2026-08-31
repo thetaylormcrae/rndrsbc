@@ -93,10 +93,22 @@ def _resolve_album_path(album: str) -> str:
 
 
 def save_photo(data: bytes, filename: str, album: str = "default") -> str:
-    """Saves an uploaded photo to gallery ``album`` (default: the root library)."""
+    """Saves an uploaded photo to gallery ``album`` (default: the root library).
+
+    After persisting, the album cursor is primed so the freshly-uploaded photo
+    is the NEXT one put on the panel (on the next render), instead of being
+    skipped because the sequential cursor kept advancing past it.
+    """
     album_dir = _resolve_album_path(album)
     safe_name = os.path.basename(filename).replace(" ", "_")
+    # Avoid clobbering an existing file of the same name with a later upload.
     fpath = os.path.join(album_dir, safe_name)
+    n = 1
+    stem, ext = os.path.splitext(safe_name)
+    while os.path.exists(fpath) and n < 1000:
+        fpath = os.path.join(album_dir, f"{stem}_{n}{ext}")
+        n += 1
+    safe_name = os.path.basename(fpath)
     with open(fpath, "wb") as f:
         f.write(data)
     # Normalize orientation & convert to a palette-friendly size
@@ -108,6 +120,24 @@ def save_photo(data: bytes, filename: str, album: str = "default") -> str:
             fixed.save(fpath, quality=88)
     except Exception as e:
         logger.warning(f"Could not normalize photo {filename}: {e}")
+    # Prime the album cursor so the new upload is shown next.
+    try:
+        idx = _load_index()
+        key = f"photo_frame::{album}"
+        idx.setdefault(key, {})
+        idx[key]["next_up"] = safe_name
+        # Invalidate this photo's on-disk frame cache so it re-renders cleanly.
+        try:
+            import shutil
+            digest = fpath.replace(os.sep, "_").replace(".", "")[:80]
+            for cname in os.listdir(CACHE_DIR):
+                if cname.startswith(digest):
+                    os.remove(os.path.join(CACHE_DIR, cname))
+        except Exception:
+            pass
+        _save_index(idx)
+    except Exception as e:
+        logger.warning(f"Could not prime photo cursor: {e}")
     return fpath
 
 
@@ -145,6 +175,13 @@ class PhotoFrameWidget(BaseWidget):
 
     def _pick_photo(self, photos, settings, index):
         """Choose the next photo to show given selected mode + album (per-gallery index key)."""
+        # Honor a fresh-upload hint: show the newly-uploaded photo exactly once.
+        next_up = index.get("next_up")
+        if next_up:
+            index.pop("next_up", None)
+            for p in photos:
+                if p["name"] == next_up:
+                    return p
         last_name = index.get("last_photo")
         candidates = [p for p in photos if p["name"] != last_name] or photos
         if settings.get("mode", "sequential") == "random":

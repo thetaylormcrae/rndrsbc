@@ -139,6 +139,32 @@ class Scheduler:
         # (and widget layout) reflect a new screen size without a restart.
         self._apply_display_resolution(new_config)
 
+    def refresh_display(self, index: int = None) -> bool:
+        """Force an immediate fresh render & full panel refresh, bypassing the
+        render cache and the redundant-render dedupe guard.
+
+        This is the correct way to repaint after on-disk content changed
+        (e.g. a photo upload) or after settings were edited in the dashboard:
+        just updating the config leaves the panel on the previous frame until
+        the next rotation tick, and the render cache can serve an identical
+        stale frame for the whole TTL -- which is why the display often appears
+        to "not update" even though data was saved.
+
+        Returns True if a frame was pushed to the panel.
+        """
+        try:
+            from core.pipeline import RENDER_CACHE
+            RENDER_CACHE.clear()
+        except Exception as e:
+            logger.debug(f"refresh_display: cache clear skipped: {e}")
+        try:
+            idx = self.current_index if index is None else index
+            self.trigger_render_now(index=idx, force_hardware=True)
+            return True
+        except Exception as e:
+            logger.warning(f"refresh_display: could not force re-render: {e}")
+            return False
+
     def _apply_display_resolution(self, new_config: dict):
         """If the target width/height changed, resize the running display and
         invalidate the render cache so the next frame uses the new size."""

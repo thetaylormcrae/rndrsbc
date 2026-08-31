@@ -137,9 +137,9 @@ class BaseWidget(ABC):
         if not tz_name:
             # Check global config if available
             try:
-                config_path = os.path.join(os.path.dirname(__file__), "..", "config.json")
-                if os.path.exists(config_path):
-                    with open(config_path, "r") as f:
+                from core.paths import CONFIG_PATH
+                if os.path.exists(CONFIG_PATH):
+                    with open(CONFIG_PATH, "r") as f:
                         cfg = json.load(f)
                         tz_name = cfg.get("device", {}).get("timezone")
             except Exception:
@@ -228,6 +228,76 @@ class BaseWidget(ABC):
             if default is not None:
                 return default, True
             raise e
+
+    def fetch_remote_text(self, url: str, ttl: int = 900, headers: dict = None,
+                          default: str = "", timeout: int = 8) -> tuple[str, bool]:
+        """
+        Thread-safe asynchronous HTTP text caching helper with graceful stale degradation.
+        Ideal for raw ICS/iCal calendar feeds, RSS XML, and plain text endpoints.
+        
+        Returns:
+            tuple[str, bool]: (text_content, is_stale)
+        """
+        cache_key = "txt:" + url
+        now = time.time()
+        cached = None
+
+        with _CACHE_LOCK:
+            if cache_key in _REMOTE_CACHE:
+                cached = _REMOTE_CACHE[cache_key]
+
+        # Case 1: Valid unexpired cache
+        if cached and (now - cached.get("ts", 0)) < ttl:
+            return cached.get("data", default), False
+
+        # Case 2: Stale cache exists -> return stale text immediately, refresh in background
+        if cached and "data" in cached:
+            if not cached.get("fetching", False):
+                with _CACHE_LOCK:
+                    _REMOTE_CACHE[cache_key]["fetching"] = True
+
+                def _bg_fetch_text():
+                    try:
+                        req_headers = headers or {"User-Agent": "rndrSBC/1.0"}
+                        resp = requests.get(url, headers=req_headers, timeout=timeout)
+                        resp.raise_for_status()
+                        text = resp.text
+                        with _CACHE_LOCK:
+                            _REMOTE_CACHE[cache_key] = {
+                                "data": text,
+                                "ts": time.time(),
+                                "fetching": False,
+                                "error": None
+                            }
+                        logger.debug(f"[Async Cache] Successfully refreshed text feed: {url}")
+                    except Exception as err:
+                        with _CACHE_LOCK:
+                            if cache_key in _REMOTE_CACHE:
+                                _REMOTE_CACHE[cache_key]["fetching"] = False
+                                _REMOTE_CACHE[cache_key]["error"] = str(err)
+                        logger.warning(f"[Async Cache] Background text refresh failed for {url}: {err}")
+
+                threading.Thread(target=_bg_fetch_text, daemon=True, name=f"bg-fetch-text-{self.name}").start()
+
+            return cached.get("data", default), True
+
+        # Case 3: No cache exists -> synchronous fetch with tight timeout
+        try:
+            req_headers = headers or {"User-Agent": "rndrSBC/1.0"}
+            resp = requests.get(url, headers=req_headers, timeout=timeout)
+            resp.raise_for_status()
+            text = resp.text
+            with _CACHE_LOCK:
+                _REMOTE_CACHE[cache_key] = {
+                    "data": text,
+                    "ts": time.time(),
+                    "fetching": False,
+                    "error": None
+                }
+            return text, False
+        except Exception as e:
+            logger.warning(f"[HTTP Fetch] Synchronous text request failed for {url}: {e}")
+            return default, True
 
     def safe_render(self, dimensions: tuple[int, int], settings: dict, bounds: Rect = None) -> Image.Image:
         """

@@ -146,16 +146,38 @@ def invalidate_unclaimed_tokens():
         _write_claim_state(state)
 
 
-def claim_url_for_token(token: str = None, base_url: str = None) -> str:
+def _detect_lan_ip() -> str:
+    """Detects active LAN IP on the primary network interface."""
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.settimeout(0.5)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        if ip and not ip.startswith("127."):
+            return ip
+    except Exception:
+        pass
+    return ""
+
+
+def claim_url_for_token(token: str = None, base_url: str = None, port: int = 8080) -> str:
     """
     Builds the claim URL that gets encoded in the QR code.
     The URL carries the token so a phone scan can complete onboarding.
+    Auto-detects the active LAN IP so scanning works reliably without mDNS.
     """
     if not token:
         state = _read_claim_state()
         token = state.get("token", "")
     if not base_url:
-        base_url = "http://rndrsbc.local"
+        lan_ip = _detect_lan_ip()
+        port_suffix = f":{port}" if port and port != 80 else ""
+        if lan_ip:
+            base_url = f"http://{lan_ip}{port_suffix}"
+        else:
+            base_url = f"http://rndrsbc.local{port_suffix}"
     return f"{base_url}/#setup?claim={token}"
 
 

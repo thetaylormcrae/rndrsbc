@@ -31,9 +31,49 @@ class SystemStatsWidget(BaseWidget):
         except Exception:
             return "42.5°C"
 
+    def _get_ram(self) -> tuple[int, int, float]:
+        """Reads real RAM usage from /proc/meminfo."""
+        try:
+            mem = {}
+            with open("/proc/meminfo", "r") as f:
+                for line in f:
+                    parts = line.split(":")
+                    if len(parts) == 2:
+                        mem[parts[0].strip()] = int(parts[1].split()[0])
+            total_mb = int(mem.get("MemTotal", 524288) / 1024)
+            avail_mb = int(mem.get("MemAvailable", mem.get("MemFree", 262144)) / 1024)
+            used_mb = max(0, total_mb - avail_mb)
+            pct = round((used_mb / total_mb) * 100, 1) if total_mb else 0.0
+            return used_mb, total_mb, pct
+        except Exception:
+            return 184, 512, 36.0
+
+    def _get_storage(self) -> tuple[float, float, float]:
+        """Reads storage usage from root filesystem."""
+        try:
+            st = os.statvfs("/")
+            total_gb = round((st.f_blocks * st.f_frsize) / (1024 ** 3), 1)
+            free_gb = round((st.f_bavail * st.f_frsize) / (1024 ** 3), 1)
+            used_gb = round(max(0, total_gb - free_gb), 1)
+            pct = round((used_gb / total_gb) * 100, 1) if total_gb else 0.0
+            return used_gb, total_gb, pct
+        except Exception:
+            return 7.2, 32.0, 22.5
+
+    def _get_cpu_pct(self) -> float:
+        """Estimates CPU load from system load average."""
+        try:
+            load1, _, _ = os.getloadavg()
+            import os as _os
+            num_cores = _os.cpu_count() or 1
+            return min(100.0, round((load1 / num_cores) * 100.0, 1))
+        except Exception:
+            return 18.0
+
     def _get_ip(self):
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.settimeout(0.5)
             s.connect(("8.8.8.8", 80))
             ip = s.getsockname()[0]
             s.close()
@@ -63,22 +103,25 @@ class SystemStatsWidget(BaseWidget):
             font_meta = canvas.get_token_font("caption")
 
             # 1. CPU & Temp
+            cpu_pct = self._get_cpu_pct()
             canvas.draw_card(c1, radius=8, fill="#ffffff", outline="#000000", width=1)
             canvas.draw_text("CPU & Temperature", (c1.x + canvas.pt(16), c1.y + canvas.pt(14)), font=font_card_t, fill="#111111")
             canvas.draw_text(self._get_cpu_temp(), (c1.x + canvas.pt(16), c1.y + canvas.pt(42)), font=font_card_v, fill="#e65c00")
-            canvas.draw_progress_bar(Rect(c1.x + canvas.pt(16), c1.bottom - canvas.pt(26), c1.w - canvas.pt(32), canvas.pt(10)), 18.0, fill_color="#e65c00")
+            canvas.draw_progress_bar(Rect(c1.x + canvas.pt(16), c1.bottom - canvas.pt(26), c1.w - canvas.pt(32), canvas.pt(10)), max(5.0, cpu_pct), fill_color="#e65c00")
 
             # 2. Memory (RAM)
+            ram_used, ram_total, ram_pct = self._get_ram()
             canvas.draw_card(c2, radius=8, fill="#ffffff", outline="#000000", width=1)
             canvas.draw_text("Memory (RAM)", (c2.x + canvas.pt(16), c2.y + canvas.pt(14)), font=font_card_t, fill="#111111")
-            canvas.draw_text("184 MB / 512 MB", (c2.x + canvas.pt(16), c2.y + canvas.pt(42)), font=font_card_v, fill="#111111")
-            canvas.draw_progress_bar(Rect(c2.x + canvas.pt(16), c2.bottom - canvas.pt(26), c2.w - canvas.pt(32), canvas.pt(10)), 36.0, fill_color="#2b6cb0")
+            canvas.draw_text(f"{ram_used} MB / {ram_total} MB", (c2.x + canvas.pt(16), c2.y + canvas.pt(42)), font=font_card_v, fill="#111111")
+            canvas.draw_progress_bar(Rect(c2.x + canvas.pt(16), c2.bottom - canvas.pt(26), c2.w - canvas.pt(32), canvas.pt(10)), max(5.0, ram_pct), fill_color="#2b6cb0")
 
             # 3. Storage
+            st_used, st_total, st_pct = self._get_storage()
             canvas.draw_card(c3, radius=8, fill="#ffffff", outline="#000000", width=1)
-            canvas.draw_text("Storage (MicroSD)", (c3.x + canvas.pt(16), c3.y + canvas.pt(14)), font=font_card_t, fill="#111111")
-            canvas.draw_text("7.2 GB / 32 GB", (c3.x + canvas.pt(16), c3.y + canvas.pt(42)), font=font_card_v, fill="#111111")
-            canvas.draw_progress_bar(Rect(c3.x + canvas.pt(16), c3.bottom - canvas.pt(26), c3.w - canvas.pt(32), canvas.pt(10)), 22.5, fill_color="#38a169")
+            canvas.draw_text("Storage (Disk)", (c3.x + canvas.pt(16), c3.y + canvas.pt(14)), font=font_card_t, fill="#111111")
+            canvas.draw_text(f"{st_used} GB / {st_total} GB", (c3.x + canvas.pt(16), c3.y + canvas.pt(42)), font=font_card_v, fill="#111111")
+            canvas.draw_progress_bar(Rect(c3.x + canvas.pt(16), c3.bottom - canvas.pt(26), c3.w - canvas.pt(32), canvas.pt(10)), max(5.0, st_pct), fill_color="#38a169")
 
             # 4. Engine Status
             canvas.draw_card(c4, radius=8, fill="#ffffff", outline="#000000", width=1)

@@ -129,9 +129,17 @@ def _draw_analog(canvas, now, corner, size):
     r = size - canvas.pt(12)
     draw = ImageDraw.Draw(canvas.image)
     draw.ellipse([cx - r, cy - r, cx + r, cy + r], outline="#999999", width=3)
-    for (ang, ln, wd) in ((60, r - canvas.pt(18), 4),      # hour
-                          (360, r - canvas.pt(10), 3),     # minute
-                          (360, r - canvas.pt(6),  1)):    # second
+
+    # Calculate real geometric angles for clock hands
+    h_ang = (now.hour % 12 + now.minute / 60.0) * 30.0
+    m_ang = (now.minute + now.second / 60.0) * 6.0
+    s_ang = now.second * 6.0
+
+    for (ang, ln, wd, col) in (
+        (h_ang, r - canvas.pt(18), 4, "#111111"),      # hour hand
+        (m_ang, r - canvas.pt(10), 3, "#111111"),      # minute hand
+        (s_ang, r - canvas.pt(6),  1, "#e65c00"),      # second hand
+    ):
         theta = math.radians(90 - ang)
         tip = (cx + ln * math.cos(theta), cy - ln * math.sin(theta))
-        draw.line([cx, cy, tip], fill="#333333", width=wd)
+        draw.line([cx, cy, tip], fill=col, width=wd)

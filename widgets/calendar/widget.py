@@ -119,29 +119,30 @@ class CalendarWidget(BaseWidget):
             return []
 
     def _fetch_events(self, ics_url: str, caldav_url: str = "", caldav_user: str = "", caldav_pass: str = "") -> list[dict]:
+        now = datetime.datetime.now()
         # Prefer CalDAV (structured multi-calendar fetch) when configured.
         if caldav_url and caldav_url.strip():
             evts = self._fetch_caldav(caldav_url, caldav_user, caldav_pass)
             if evts:
                 return evts[:8]
-        now = datetime.datetime.now()
-        if not ics_url or not ics_url.strip():
-            # Demo default calendar events if no URL provided
-            return [
-                {"summary": "Team Sync & Standup", "datetime": now.replace(hour=9, minute=30), "is_all_day": False},
-                {"summary": "Product Design Review", "datetime": now.replace(hour=14, minute=0), "is_all_day": False},
-                {"summary": "Family Dinner", "datetime": (now + datetime.timedelta(days=1)).replace(hour=18, minute=30), "is_all_day": False},
-                {"summary": "Quarterly Planning", "datetime": (now + datetime.timedelta(days=2)).replace(hour=10, minute=0), "is_all_day": False},
-                {"summary": "Dentist Appointment", "datetime": (now + datetime.timedelta(days=4)).replace(hour=11, minute=15), "is_all_day": False},
-            ]
-        try:
-            req = urllib.request.Request(ics_url, headers={"User-Agent": "rndrSBC/1.0"})
-            with urllib.request.urlopen(req, timeout=10) as response:
-                content = response.read().decode("utf-8", errors="ignore")
-                return parse_ics_feed(content)
-        except Exception as e:
-            logger.error(f"Failed to fetch ICS feed: {e}")
-            return [{"summary": "Unable to load iCal feed", "datetime": datetime.datetime.now(), "is_all_day": True}]
+        if ics_url and ics_url.strip():
+            try:
+                content, is_stale = self.fetch_remote_text(ics_url.strip(), ttl=900, timeout=6)
+                if content:
+                    parsed = parse_ics_feed(content)
+                    if parsed:
+                        return parsed
+            except Exception as e:
+                logger.warning(f"Failed to fetch or parse ICS feed: {e}")
+
+        # Demo default calendar events if no URL provided or feed is unconfigured
+        return [
+            {"summary": "Team Sync & Standup", "datetime": now.replace(hour=9, minute=30), "is_all_day": False},
+            {"summary": "Product Design Review", "datetime": now.replace(hour=14, minute=0), "is_all_day": False},
+            {"summary": "Family Dinner", "datetime": (now + datetime.timedelta(days=1)).replace(hour=18, minute=30), "is_all_day": False},
+            {"summary": "Quarterly Planning", "datetime": (now + datetime.timedelta(days=2)).replace(hour=10, minute=0), "is_all_day": False},
+            {"summary": "Dentist Appointment", "datetime": (now + datetime.timedelta(days=4)).replace(hour=11, minute=15), "is_all_day": False},
+        ]
 
     def render(self, dimensions: tuple[int, int], settings: dict, bounds: Rect = None) -> Image.Image:
         title = settings.get("title", "My Schedule")

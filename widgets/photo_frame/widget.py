@@ -14,11 +14,11 @@ from PIL import Image, ImageDraw, ImageOps, ImageEnhance
 
 from core.canvas import ResponsiveCanvas, Rect
 from core.providers import resolve_provider, open_image, list_album_photos
+from core.paths import DATA_DIR
 from widgets.base import BaseWidget, register_widget
 
 logger = logging.getLogger("rndrSBC.photo_frame")
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data")
 PHOTO_DIR = os.path.join(DATA_DIR, "photos")
 INDEX_FILE = os.path.join(DATA_DIR, "photo_index.json")
 CACHE_DIR = os.path.join(DATA_DIR, "photos_cache")

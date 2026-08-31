@@ -109,7 +109,9 @@ class OnboardingWidget(BaseWidget):
 
             # Footer
             tok_label = f"Claim Token: {token[:12]}..." if token else "Ready to claim"
-            canvas.draw_text(tok_label, (info_box.x, info_box.bottom - canvas.pt(16)), font=caption_font, fill="#999999")
+            canvas.draw_text(tok_label, (info_box.x, info_box.bottom - canvas.pt(30)), font=caption_font, fill="#555555")
+            clean_url = url.replace("http://", "")
+            canvas.draw_text(f"Or visit: {clean_url}", (info_box.x, info_box.bottom - canvas.pt(14)), font=caption_font, fill="#888888")
 
             if bounds is None:
                 canvas.draw_frame("Corner", color="#111111")

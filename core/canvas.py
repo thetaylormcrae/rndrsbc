@@ -161,14 +161,25 @@ class ResponsiveCanvas:
                 f"{font_name}-Regular.ttf", f"{font_name}.ttf", "arial.ttf", "segoeui.ttf", "DejaVuSans.ttf"
             ])
 
+        try:
+            from core.paths import FONTS_DIR, package_path
+            pkg_fonts = package_path("assets", "fonts")
+        except Exception:
+            FONTS_DIR = None
+            pkg_fonts = None
+
         search_dirs = [
-            os.path.join(os.path.dirname(__file__), "..", "assets", "fonts"),
-            os.path.join(os.path.dirname(__file__), "..", "static", "fonts"),
-            os.path.join(os.path.dirname(__file__), "fonts"),
-            "C:\\Windows\\Fonts",
-            "/usr/share/fonts/truetype/dejavu",
-            "/usr/share/fonts/truetype",
-            "/usr/share/fonts"
+            d for d in [
+                FONTS_DIR,
+                pkg_fonts,
+                os.path.join(os.path.dirname(__file__), "..", "assets", "fonts"),
+                os.path.join(os.path.dirname(__file__), "..", "static", "fonts"),
+                os.path.join(os.path.dirname(__file__), "fonts"),
+                "C:\\Windows\\Fonts",
+                "/usr/share/fonts/truetype/dejavu",
+                "/usr/share/fonts/truetype",
+                "/usr/share/fonts"
+            ] if d and os.path.exists(d)
         ]
 
         for s_dir in search_dirs:

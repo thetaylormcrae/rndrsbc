@@ -24,10 +24,22 @@ def _run(args, timeout=4):
 
 
 def _get_ssid() -> str:
+    # 1. NetworkManager (Bookworm / modern Linux)
     out = _run(["nmcli", "-t", "-f", "active,ssid", "dev", "wifi"])
     for line in out.splitlines():
         if line.startswith("yes:"):
-            return line.split(":", 1)[1]
+            ssid = line.split(":", 1)[1].strip()
+            if ssid:
+                return ssid
+    # 2. iwgetid (Bullseye / legacy wpa_supplicant)
+    out_iw = _run(["iwgetid", "-r"])
+    if out_iw:
+        return out_iw
+    # 3. wpa_cli
+    out_wpa = _run(["wpa_cli", "status"])
+    for line in out_wpa.splitlines():
+        if line.startswith("ssid="):
+            return line.split("=", 1)[1].strip()
     return "Not connected"
 
 
@@ -35,7 +47,21 @@ def _get_signal() -> str:
     out = _run(["nmcli", "-t", "-f", "active,signal", "dev", "wifi"])
     for line in out.splitlines():
         if line.startswith("yes:"):
-            return line.split(":", 1)[1] + "%"
+            sig = line.split(":", 1)[1].strip()
+            if sig:
+                return sig + "%"
+    # Fallback: parse /proc/net/wireless quality metric
+    try:
+        with open("/proc/net/wireless", "r") as f:
+            lines = f.readlines()
+            if len(lines) >= 3:
+                parts = lines[2].split()
+                if len(parts) >= 3:
+                    quality = float(parts[2].replace(".", ""))
+                    pct = min(100, int((quality / 70.0) * 100))
+                    return f"{pct}%"
+    except Exception:
+        pass
     return "—"
 
 

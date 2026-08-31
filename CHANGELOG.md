@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.9.0 (2026-08-31)
+
+### Features
+
+- **widgets**: Complete 100% InkyPi feature parity with News/RSS, Quotes, and Crypto market widgets
+  ([`c434031`](https://github.com/thetaylormcrae/rndrsbc/commit/c4340314c03b966fac800090f05d02c4fdc56832))
+
+
 ## v0.8.5 (2026-08-31)
 
 ### Bug Fixes

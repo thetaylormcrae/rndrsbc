@@ -477,6 +477,31 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     let setupRequired = false;
     const weatherMaps = {};
 
+    // Pull the one-time claim token out of the URL and POST it to
+    // /api/onboarding/claim so the device is actually marked claimed. The
+    // claim URL only carries the token in the fragment/query (browsers never
+    // send either to the server), so we have to consume it client-side.
+    async function consumeClaimFromUrl() {
+      let token = null;
+      const match = (window.location.search || window.location.hash).match(/[?&]claim=([^&]+)/);
+      if (match) token = decodeURIComponent(match[1]);
+      if (!token) return false;
+      try {
+        const res = await fetch('/api/onboarding/claim', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({token})
+        });
+        if (res.ok) {
+          // Claimed. Drop the token from the URL so a refresh/re-share does not
+          // attempt to re-consume an already-used token.
+          history.replaceState({}, '', window.location.pathname + window.location.search.replace(/[?&]claim=[^&]+/, ''));
+          return true;
+        }
+      } catch (e) { /* network error; fall through to normal setup flow */ }
+      return false;
+    }
+
     async function checkAuthStatus() {
       try {
         const res = await fetch('/api/auth/status');
@@ -1164,6 +1189,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
     // Initialize
     (async () => {
+      await consumeClaimFromUrl();
       await checkAuthStatus();
       // Gate the management UI behind authentication once an admin password
       // exists: a device that has finished onboarding must not expose its

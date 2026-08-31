@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.8.4 (2026-08-31)
+
+### Bug Fixes
+
+- **onboarding**: Consume the claim token client-side so QR/claim URLs actually claim the device
+  ([`87f5851`](https://github.com/thetaylormcrae/rndrsbc/commit/87f58518cff8bdf8185dd4ab75d0ea4275878135))
+
+
 ## v0.8.3 (2026-08-31)
 
 ### Bug Fixes

@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.8.2 (2026-08-31)
+
+### Bug Fixes
+
+- **display**: Anchor virtual display preview to deploy home so boot no longer crashes with
+  PermissionError
+  ([`489eb96`](https://github.com/thetaylormcrae/rndrsbc/commit/489eb96029bea6fa884322bbda6c62fcc4421b3e))
+
+
 ## v0.8.1 (2026-08-30)
 
 ### Bug Fixes

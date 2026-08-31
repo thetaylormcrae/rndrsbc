@@ -18,6 +18,9 @@ def test_1_widgets():
     assert "weather" in WIDGET_REGISTRY
     assert "calendar" in WIDGET_REGISTRY
     assert "photo_frame" in WIDGET_REGISTRY
+    assert "news" in WIDGET_REGISTRY
+    assert "quotes" in WIDGET_REGISTRY
+    assert "crypto" in WIDGET_REGISTRY
 
     for widget_id, w in WIDGET_REGISTRY.items():
         img = w.render((800, 480), {})
@@ -144,3 +147,18 @@ if __name__ == "__main__":
     print("\n=======================================================")
     print(">>> COMPREHENSIVE QA TEST SUITE: 100% PASSED (7/7) <<<")
     print("=======================================================")
+
+def test_all_extended_widgets_render():
+    """Verify newly added InkyPi parity widgets (news, quotes, crypto) render cleanly."""
+    from widgets.base import discover_widgets, WIDGET_REGISTRY
+    discover_widgets()
+    
+    assert "news" in WIDGET_REGISTRY
+    assert "quotes" in WIDGET_REGISTRY
+    assert "crypto" in WIDGET_REGISTRY
+    
+    for wid in ["news", "quotes", "crypto"]:
+        w = WIDGET_REGISTRY[wid]
+        img = w.safe_render((800, 480), {})
+        assert img is not None
+        assert img.size == (800, 480)

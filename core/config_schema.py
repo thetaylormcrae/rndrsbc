@@ -55,7 +55,11 @@ def validate_config(raw: Any) -> Tuple[Dict[str, Any], List[str]]:
     problems: List[str] = []
     warnings: List[str] = []
     _known = {"display", "device", "active_playlist", "playlists", "_comment",
-              "schema_version", "quiet_hours", "app", "rotation", "refresh_mode"}
+              "schema_version", "quiet_hours", "app", "rotation", "refresh_mode",
+              # Runtime/managed secret kept in config.json. Deliberately NOT part of the
+              # user-editable dashboard surface; stored here so the auth gate
+              # (_has_admin_setup) can read it and device reboot self-heals the config.
+              "admin_password_hash",}
 
     for key in raw:
         if key not in _known:

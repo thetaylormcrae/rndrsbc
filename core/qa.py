@@ -94,6 +94,13 @@ def resolve_display(cfg: dict):
                  for p in sig.parameters.values())
     cfg_kw = {k: v for k, v in disp_cfg.items()
               if k != "driver" and (k in sig.parameters or var_kw)}
+    # A named ``virtual`` driver must still write its live preview into the
+    # writable deployment home, never the process CWD (which is unwritable
+    # under systemd -> PermissionError on boot). Anchor output_path the same
+    # way the ``auto`` path does unless the config explicitly overrides it.
+    from displays.virtual import VirtualDisplay
+    if cls is VirtualDisplay and "output_path" not in cfg_kw:
+        cfg_kw["output_path"] = paths.resolve("live_screen.png")
     return cls(**cfg_kw)
 
 

@@ -358,7 +358,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1.5">Device Timezone</label>
-            <input type="text" id="cfg-timezone" value="America/New_York" placeholder="e.g. America/New_York, Europe/London" onchange="updateDeviceSettings()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:border-orange-500 focus:outline-none" />
+            <select id="cfg-timezone" onchange="updateDeviceSettings()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:border-orange-500 focus:outline-none"></select>
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1.5">Device Name</label>
@@ -714,6 +714,44 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
     }
 
+    function buildTimezoneSelect() {
+      // Comprehensive IANA timezone list, grouped by geographic region, rendered
+      // as a true native <select> drop-down (not a free-text field).
+      const zones = [
+        ['Africa', ['Abidjan','Accra','Addis_Ababa','Algiers','Cairo','Cape_Town','Casablanca','Johannesburg','Kampala','Khartoum','Lagos','Nairobi','Tripoli']],
+        ['America', ['Anchorage','Argentina/Buenos_Aires','Asuncion','Atikokan','Bogota','Caracas','Chicago','Costa_Rica','Denver','Detroit','El_Salvador','Guatemala','Halifax','Indianapolis','Juneau','La_Paz','Lima','Los_Angeles','Managua','Mexico_City','Monterrey','Montreal','New_York','Phoenix','Port-au-Prince','Regina','Santiago','Sao_Paulo','Tijuana','Toronto','Vancouver','Winnipeg']],
+        ['Asia', ['Almaty','Amman','Ashgabat','Baghdad','Baku','Bangkok','Beirut','Dhaka','Dubai','Hong_Kong','Irkutsk','Jakarta','Jerusalem','Kabul','Karachi','Kathmandu','Kolkata','Krasnoyarsk','Kuala_Lumpur','Manila','Muscat','Riyadh','Seoul','Shanghai','Singapore','Taipei','Tashkent','Tehran','Tel_Aviv','Tokyo','Ulaanbaatar']],
+        ['Atlantic', ['Azores','Bermuda','Canary','Cape_Verde','Faroe','Madeira']],
+        ['Australia', ['Adelaide','Brisbane','Darwin','Hobart','Melbourne','Perth','Sydney']],
+        ['Europe', ['Amsterdam','Athens','Belgrade','Berlin','Bern','Brussels','Bucharest','Budapest','Chisinau','Copenhagen','Dublin','Helsinki','Istanbul','Kyiv','Lisbon','Ljubljana','London','Madrid','Minsk','Moscow','Oslo','Paris','Prague','Reykjavik','Rome','Sarajevo','Skopje','Sofia','Stockholm','Tallinn','Vienna','Warsaw','Zagreb','Zurich']],
+        ['Indian', ['Chagos','Christmas','Cocos','Maldives','Mauritius','Reunion']],
+        ['Pacific', ['Apia','Auckland','Chatham','Chuuk','Easter','Efate','Fakaofo','Fiji','Guadalcanal','Guam','Honolulu','Kiritimati','Majuro','Midway','Noumea','Pago_Pago','Palau','Port_Moresby','Tarawa','Tongatapu','Wake']]
+      ];
+      const sel = document.getElementById('cfg-timezone');
+      sel.innerHTML = '';
+      zones.forEach(([group, list]) => {
+        const og = document.createElement('optgroup');
+        og.label = group;
+        list.forEach(z => {
+          const o = document.createElement('option');
+          o.value = `${group}/${z}`;
+          o.textContent = `${group}/${z.replace(/_/g, ' ')}`;
+          og.appendChild(o);
+        });
+        sel.appendChild(og);
+      });
+      ['UTC','UTC+01:00','UTC+02:00','UTC+03:00','UTC+04:00','UTC+05:00','UTC+05:30','UTC+06:00','UTC+07:00','UTC+08:00','UTC+09:00','UTC+10:00','UTC-01:00','UTC-02:00','UTC-03:00','UTC-04:00','UTC-05:00','UTC-06:00','UTC-07:00','UTC-08:00','UTC-09:00','UTC-10:00'].forEach(z => {
+        const o = document.createElement('option');
+        o.value = z;
+        o.textContent = z;
+        sel.appendChild(o);
+      });
+    }
+
+    // Populate the timezone menu once at page load; its value is filled in by
+    // updateConfigUI below when the saved config arrives.
+    buildTimezoneSelect();
+
     function renderPlaylistTabs() {
       const tabsEl = document.getElementById('playlist-tabs');
       tabsEl.innerHTML = '';
@@ -943,16 +981,73 @@ DASHBOARD_HTML = """<!DOCTYPE html>
               </div>
             </div>
 
-            <!-- Toggles: Graph, Moon Phase -->
+            <!-- Display options grid (full InkyPi parity) -->
             <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
               <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
                 <input type="checkbox" ${s.displayGraph !== false ? 'checked' : ''} onchange="updateSetting(${idx}, 'displayGraph', this.checked)" class="rounded accent-orange-600" />
-                <span>Show Hourly Graph</span>
+                <span>Hourly Graph</span>
+              </label>
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.displayRefreshTime !== false ? 'checked' : ''} onchange="updateSetting(${idx}, 'displayRefreshTime', this.checked)" class="rounded accent-orange-600" />
+                <span>Refresh Time</span>
+              </label>
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.displayMetrics !== false ? 'checked' : ''} onchange="updateSetting(${idx}, 'displayMetrics', this.checked)" class="rounded accent-orange-600" />
+                <span>Metrics (Humidity/Wind)</span>
               </label>
               <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
                 <input type="checkbox" ${s.moonPhase ? 'checked' : ''} onchange="updateSetting(${idx}, 'moonPhase', this.checked)" class="rounded accent-orange-600" />
-                <span>Show Moon Phase</span>
+                <span>Moon Phase</span>
               </label>
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.displayRain ? 'checked' : ''} onchange="updateSetting(${idx}, 'displayRain', this.checked)" class="rounded accent-orange-600" />
+                <span>Rain Bars</span>
+              </label>
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.displayGraphIcons ? 'checked' : ''} onchange="updateSetting(${idx}, 'displayGraphIcons', this.checked)" class="rounded accent-orange-600" />
+                <span>Graph Hourly Icons</span>
+              </label>
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.displayForecast !== false ? 'checked' : ''} onchange="updateSetting(${idx}, 'displayForecast', this.checked)" class="rounded accent-orange-600" />
+                <span>7-Day Forecast</span>
+              </label>
+            </div>
+
+            <!-- Advanced: forecast days, icon step, title source, timezone -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Forecast Days</label>
+                <select onchange="updateSetting(${idx}, 'forecastDays', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                  <option value="3" ${s.forecastDays == '3' ? 'selected' : ''}>3 Days</option>
+                  <option value="5" ${s.forecastDays == '5' ? 'selected' : ''}>5 Days</option>
+                  <option value="7" ${s.forecastDays == '7' || !s.forecastDays ? 'selected' : ''}>7 Days</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Icon Step (hours)</label>
+                <select onchange="updateSetting(${idx}, 'graphIconStep', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                  ${['1','2','4','6','12'].map(v => `<option value="${v}" ${String(s.graphIconStep||6)===v ? 'selected' : ''}>Every ${v} hr${v>1?'s':''}</option>`).join('')}
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Title Source</label>
+                <select onchange="updateSetting(${idx}, 'titleSelection', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                  <option value="location" ${s.titleSelection !== 'custom' ? 'selected' : ''}>Resolve Location</option>
+                  <option value="custom" ${s.titleSelection === 'custom' ? 'selected' : ''}>Custom Title</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Time Zone</label>
+                <select onchange="updateSetting(${idx}, 'weatherTimeZone', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                  <option value="locationTimeZone" ${s.weatherTimeZone !== 'localTimeZone' ? 'selected' : ''}>Location Time Zone</option>
+                  <option value="localTimeZone" ${s.weatherTimeZone === 'localTimeZone' ? 'selected' : ''}>Device (Local)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Custom Title (Set Title Source to "Custom Title")</label>
+              <input type="text" value="${s.customTitle || ''}" placeholder="e.g. Home Forecourt, Grand Central" onchange="updateSetting(${idx}, 'customTitle', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
             </div>
 
             <!-- Leaflet Interactive Map -->
@@ -2302,42 +2397,88 @@ class ProductionHandler(QuietHandler):
 
         # 7. Photo upload (multipart/form-data)
         if parsed.path == "/api/photos/upload" and self.headers.get("Content-Type", "").startswith("multipart/form-data"):
+            # Self-contained multipart/form-data parser using ONLY the standard
+            # library. No dependency on `cgi` (removed in Py3.13/PEP 594) and no
+            # reliance on `werkzeug` being present at runtime -- the declared
+            # dependency is not installed on every target SBC. This keeps photo
+            # uploads working on every supported Python version off the shelf.
             try:
-                # Use werkzeug's MultiPartParser directly. The stdlib `cgi` module
-                # was removed in Python 3.13 (PEP 594), and werkzeug is a declared
-                # dependency (works on all supported versions).
-                from werkzeug.formparser import MultiPartParser
-                from io import BytesIO
                 content_type = self.headers.get("Content-Type", "")
                 boundary = None
                 for part in content_type.split(";")[1:]:
                     if "boundary=" in part:
                         boundary = part.split("=", 1)[1].strip().strip('"').encode()
-                length = int(self.headers.get("Content-Length", 0) or 0)
-                # NOTE: do_POST already consumed the body via rfile.read(length)
-                # into raw_body at the top of the method. Re-reading rfile here
-                # returns empty bytes, so we must use the in-scope raw_body.
-                body = raw_body
                 if not boundary:
                     raise ValueError("Missing multipart boundary")
-                _, files = MultiPartParser().parse(BytesIO(body), boundary, length or None)
-                storage = files.get("file")
-                if storage is None and files:
-                    storage = list(files.values())[0]
-                if storage is not None and storage.filename:
-                    from widgets.photo_frame.widget import save_photo
-                    filename = storage.filename or "photo.jpg"
-                    storage.stream.seek(0)
-                    photo_path = save_photo(storage.stream.read(), filename)
-                    self.send_response(200)
-                    self.send_header("Content-Type", "application/json")
-                    self.end_headers()
-                    self.wfile.write(json.dumps({"status": "uploaded", "path": photo_path}).encode("utf-8"))
-                else:
+
+                # raw_body was already consumed by do_POST top-of-method.
+                body = raw_body
+
+                # Minimal, spec-faithful multipart extraction: locate each
+                # part's header block and a name="file" filename="..." entry,
+                # then take the chunk between the blank line and the next
+                # boundary token.
+                delimiter = b"--" + boundary
+                idx = 0
+                found_file = None
+                filename = None
+                while True:
+                    header_start = body.find(delimiter, idx)
+                    if header_start == -1:
+                        break
+                    line_end = body.find(b"\r\n", header_start)
+                    if line_end == -1:
+                        break
+                    # Skip the boundary line itself.
+                    cursor = line_end + 2
+                    headers_end = body.find(b"\r\n\r\n", cursor)
+                    if headers_end == -1:
+                        break
+                    headers_blob = body[cursor:headers_end]
+                    part_headers = {}
+                    for hline in headers_blob.split(b"\r\n"):
+                        if b":" in hline:
+                            name, _, val = hline.partition(b":")
+                            part_headers[name.strip().lower()] = val.strip()
+                    cd = part_headers.get(b"content-disposition", b"")
+                    has_file_field = b'name="file"' in cd or b'name=" file"' in cd
+                    fname = None
+                    if b"filename=" in cd:
+                        fname = cd.split(b"filename=", 1)[1].strip()
+                        if fname.startswith(b'"') and fname.endswith(b'"'):
+                            fname = fname[1:-1]
+                        fname = fname.decode("utf-8", "replace")
+                    # Next boundary after this part's headers.
+                    next_delim = body.find(delimiter, headers_end)
+                    if next_delim == -1:
+                        content = body[headers_end + 4:]
+                    else:
+                        content = body[headers_end + 4:next_delim]
+                    # Strip trailing CRLF belonging to the boundary separator.
+                    if content.endswith(b"\r\n"):
+                        content = content[:-2]
+                    if has_file_field and fname:
+                        found_file = content
+                        filename = fname
+                        break
+                    # Advance over this part (including closing -- or CRLF).
+                    if next_delim == -1:
+                        break
+                    idx = next_delim
+
+                if found_file is None:
                     self.send_response(400)
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
                     self.wfile.write(b'{"error":"No file uploaded"}')
+                    return
+
+                from widgets.photo_frame.widget import save_photo
+                photo_path = save_photo(found_file, filename or "photo.jpg")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "uploaded", "path": photo_path}).encode("utf-8"))
             except Exception as e:
                 self.log_message("Photo upload failed: %s", e)
                 self.send_response(400)

@@ -299,6 +299,7 @@ class _OpenMeteoProvider:
             "current": current,
             "hourly": hourly_series,
             "forecast": forecast,
+            "timezone": self._tz(weather),
             "source": "Open-Meteo",
         }
 
@@ -419,6 +420,7 @@ class _OpenWeatherMapProvider:
             "current": current,
             "hourly": hourly_series,
             "forecast": forecast,
+            "timezone": self._tz(weather),
             "source": "OpenWeatherMap",
         }
 
@@ -468,12 +470,24 @@ class WeatherWidget(BaseWidget):
                 {"name": "weatherProvider", "label": "Weather Provider", "type": "select",
                  "options": ["OpenMeteo", "OpenWeatherMap"], "default": "OpenMeteo"},
                 {"name": "units", "label": "Units", "type": "select",
-                 "options": ["metric", "imperial", "standard"], "default": "imperial"},
+                 "options": ["imperial", "metric", "standard"], "default": "imperial"},
+                {"name": "displayRefreshTime", "label": "Show Refresh Time", "type": "boolean", "default": True},
+                {"name": "displayMetrics", "label": "Show Metrics (humidity, wind, etc.)", "type": "boolean", "default": True},
+                {"name": "displayGraph", "label": "Show Hourly Graph", "type": "boolean", "default": True},
+                {"name": "displayRain", "label": "Show Rain Bars", "type": "boolean", "default": False},
+                {"name": "displayGraphIcons", "label": "Show Hourly Icons", "type": "boolean", "default": False},
+                {"name": "graphIconStep", "label": "Graph Icon Step (hours)", "type": "number", "default": 6},
+                {"name": "displayForecast", "label": "Show 7-Day Forecast", "type": "boolean", "default": True},
+                {"name": "forecastDays", "label": "Forecast Days", "type": "select",
+                 "options": ["3", "5", "7"], "default": "7"},
+                {"name": "moonPhase", "label": "Show Moon Phase", "type": "boolean", "default": False},
                 {"name": "time_format", "label": "Time Format", "type": "select",
                  "options": ["12h", "24h"], "default": "12h"},
-                {"name": "displayGraph", "label": "Show Hourly Graph", "type": "boolean", "default": True},
-                {"name": "moonPhase", "label": "Show Moon Phase", "type": "boolean", "default": False},
-                {"name": "graphIconStep", "label": "Graph Icon Step (hours)", "type": "number", "default": 6},
+                {"name": "titleSelection", "label": "Title Source", "type": "select",
+                 "options": ["location", "custom"], "default": "location"},
+                {"name": "customTitle", "label": "Custom Title (when Title Source = custom)", "type": "string", "default": ""},
+                {"name": "weatherTimeZone", "label": "Time Zone", "type": "select",
+                 "options": ["locationTimeZone", "localTimeZone"], "default": "locationTimeZone"},
                 {"name": "api_key", "label": "OpenWeatherMap API Key", "type": "string", "default": ""},
                 {"name": "frame", "label": "Frame Style", "type": "select",
                  "options": ["Corner", "Rectangle", "None"], "default": "None"},
@@ -490,14 +504,28 @@ class WeatherWidget(BaseWidget):
         provider_name = settings.get("weatherProvider", "OpenMeteo")
         time_format = settings.get("time_format", "12h")
         display_graph = settings.get("displayGraph", True)
-        moon_phase = settings.get("moonPhase", False)
+        timezone = None
+        weather_time_zone = settings.get("weatherTimeZone", "locationTimeZone")
+        display_refresh_time = settings.get("displayRefreshTime", True)
+        display_metrics = settings.get("displayMetrics", True)
+        display_rain = settings.get("displayRain", False)
+        display_graph_icons = settings.get("displayGraphIcons", False)
         graph_icon_step = int(settings.get("graphIconStep", 6) or 6)
+        display_forecast = settings.get("displayForecast", True)
+        forecast_days = int(settings.get("forecastDays", 7) or 7)
+        moon_phase = settings.get("moonPhase", False)
         frame_style = settings.get("frame", "None")
         api_key = settings.get("api_key", "").strip()
+        title_selection = settings.get("titleSelection", "location")
+        custom_title = (settings.get("customTitle") or "").strip()
+        weather_tz = settings.get("weatherTimeZone", "locationTimeZone")
         lang = settings.get("language", self.config.get("language", "en")) if hasattr(self, "config") else settings.get("language", "en")
 
-        # Resolve title: custom override OR resolved location
-        title = (settings.get("title") or "").strip() or location
+        # Resolve title: custom selection wins, else the resolved location name.
+        if title_selection == "custom" and custom_title:
+            title = custom_title
+        else:
+            title = (settings.get("title") or "").strip() or location
 
         # ---- Fetch & parse with non-blocking async caching ----
         is_stale = False
@@ -518,24 +546,40 @@ class WeatherWidget(BaseWidget):
             if title == location and not settings.get("title") and location in ("Weather", "New York City"):
                 title = location
 
+        timezone = data.get("timezone") or "UTC"
+
         with ResponsiveCanvas(dimensions, bg_color="#ffffff") as canvas:
             content = bounds if bounds is not None else canvas.bounds.inset(canvas.pt(16))
             cur = data["current"]
 
             # ---- Layout ----
-            if display_graph:
-                h_box, t_box, g_box, f_box = content.split_rows([1.0, 3.2, 3.0, 2.6], gap=canvas.pt(8))
+            use_forecast = display_forecast and data.get("forecast")
+            use_graph = display_graph
+            if use_forecast:
+                # ensure forecast days is bounded to what we actually have
+                if "forecast_count" in data:
+                    forecast_days = min(forecast_days, int(data["forecast_count"]))
+                if use_graph:
+                    h_box, t_box, g_box, f_box = content.split_rows([1.0, 3.2, 3.0, 2.6], gap=canvas.pt(8))
+                else:
+                    h_box, t_box, f_box = content.split_rows([1.0, 3.6, 3.6], gap=canvas.pt(8))
+                    g_box = None
             else:
-                h_box, t_box, f_box = content.split_rows([1.0, 3.4, 3.4], gap=canvas.pt(8))
-                g_box = None
+                if use_graph:
+                    h_box, t_box, g_box = content.split_rows([1.0, 3.4, 3.4], gap=canvas.pt(8))
+                else:
+                    h_box, t_box = content.split_rows([1.0, 3.6], gap=canvas.pt(8))
+                f_box = None
+                g_box = g_box if use_graph else None
 
-            self._draw_header(canvas, h_box, title, data["date_label"], time_format, lang, is_stale=is_stale)
-            self._draw_today(canvas, t_box, cur, units, data, settings, lang)
+            self._draw_header(canvas, h_box, title, data["date_label"], time_format, lang, is_stale=is_stale, display_refresh_time=display_refresh_time, timezone=timezone, weather_time_zone=weather_time_zone)
+            self._draw_today(canvas, t_box, cur, units, data, settings, lang, display_metrics=display_metrics)
 
-            if display_graph and g_box is not None:
-                self._draw_graph(canvas, g_box, data["hourly"], units, time_format, graph_icon_step)
+            if use_graph and g_box is not None:
+                self._draw_graph(canvas, g_box, data["hourly"], units, time_format, graph_icon_step, display_rain=display_rain, display_icons=display_graph_icons)
 
-            self._draw_forecast(canvas, f_box, data["forecast"], units, moon_phase, lat)
+            if use_forecast and f_box is not None:
+                self._draw_forecast(canvas, f_box, data["forecast"], units, moon_phase, lat, forecast_days=forecast_days)
 
             if bounds is None:
                 canvas.draw_frame(frame_style, color="#000000")
@@ -543,19 +587,26 @@ class WeatherWidget(BaseWidget):
             return canvas.to_image()
 
     # ------------------------------------------------------------------ #
-    def _draw_header(self, canvas, box, title, date_label, time_format, lang, is_stale=False):
+    def _draw_header(self, canvas, box, title, date_label, time_format, lang, is_stale=False, display_refresh_time=True, timezone="UTC", weather_time_zone="locationTimeZone"):
         font_title = canvas.get_font("Roboto-Bold", 26, font_weight="bold")
         font_date = canvas.get_font("Roboto-Regular", 18)
         font_sub = canvas.get_font("Roboto-Regular", 12)
         canvas.draw_text(title, (box.x, box.y + canvas.pt(2)), font=font_title, fill="#000000")
         canvas.draw_text(date_label, (box.center[0], box.y + canvas.pt(6)), font=font_date, fill="#000000", anchor="ma")
-        now = datetime.now()
-        stamp = now.strftime("%H:%M") if time_format == "24h" else now.strftime("%I:%M %p").lstrip("0")
-        canvas.draw_text(f"{i18n.label(lang, 'updated')}: {stamp}", (box.right, box.y + canvas.pt(8)), font=font_sub, fill="#000000", anchor="ra")
+        if display_refresh_time:
+            now = datetime.now()
+            if weather_time_zone == "locationTimeZone" and timezone and timezone != "UTC":
+                try:
+                    from zoneinfo import ZoneInfo
+                    now = datetime.now(ZoneInfo(timezone)).replace(tzinfo=None)
+                except Exception:
+                    pass  # fall back to device local time if TZ string is invalid
+            stamp = now.strftime("%H:%M") if time_format == "24h" else now.strftime("%I:%M %p").lstrip("0")
+            canvas.draw_text(f"{i18n.label(lang, 'updated')}: {stamp}", (box.right, box.y + canvas.pt(8)), font=font_sub, fill="#000000", anchor="ra")
         if is_stale:
             canvas.draw_stale_indicator(box, tooltip="Offline Data")
 
-    def _draw_today(self, canvas, box, cur, units, data, settings, lang):
+    def _draw_today(self, canvas, box, cur, units, data, settings, lang, display_metrics=True):
         unit_sym = UNITS[units]["temp"]
         wind_unit = UNITS[units]["wind"]
 
@@ -577,34 +628,35 @@ class WeatherWidget(BaseWidget):
         canvas.draw_text(f"{cur['high']}° / {cur['low']}°", (temp_box.x, temp_box.y + canvas.pt(78)), font=font_meta, fill="#000000")
 
         # Metrics 4x2 grid (no box borders, clean text)
-        pts = [
-            ("Sunrise", f"{self._fmt_hms(cur['sunrise'], settings.get('time_format', '12h'))}", "sunrise.png"),
-            ("Sunset", f"{self._fmt_hms(cur['sunset'], settings.get('time_format', '12h'))}", "sunset.png"),
-            (i18n.label(lang, "wind"), f"{cur['wind']} {wind_unit} {cur['wind_arrow']}", "wind.png"),
-            (i18n.label(lang, "humidity"), f"{cur['humidity']}%", "humidity.png"),
-            ("Pressure", f"{cur['pressure']} hPa", "pressure.png"),
-            ("UV Index", f"{cur['uv']}", "uvi.png"),
-            ("Visibility", f"{cur['visibility']} {UNITS[units]['dist']}", "visibility.png"),
-            ("Air Quality", f"{cur['aqi']}", "aqi.png"),
-        ]
-        m_rows = metrics_box.split_rows([1, 1, 1, 1], gap=canvas.pt(2))
-        m_idx = 0
-        font_lbl = canvas.get_font("Roboto-Regular", 11)
-        font_val = canvas.get_font("Roboto-Bold", 12, font_weight="bold")
-        for row in m_rows:
-            cols = row.split_columns([1, 1], gap=canvas.pt(4))
-            for col in cols:
-                if m_idx < len(pts):
-                    lbl, val, ico_name = pts[m_idx]
-                    ico_sub, txt_sub = col.split_columns([2.2, 7.8], gap=canvas.pt(2))
-                    ico_p = resolve_icon(ico_name)
-                    if ico_p:
-                        canvas.paste_icon(ico_p, ico_sub.inset(canvas.pt(2)), size_pt=14)
-                    canvas.draw_text(lbl, (txt_sub.x, txt_sub.y), font=font_lbl, fill="#555555")
-                    canvas.draw_text(val, (txt_sub.x, txt_sub.y + canvas.pt(12)), font=font_val, fill="#000000")
-                    m_idx += 1
+        if display_metrics:
+            pts = [
+                ("Sunrise", f"{self._fmt_hms(cur['sunrise'], settings.get('time_format', '12h'))}", "sunrise.png"),
+                ("Sunset", f"{self._fmt_hms(cur['sunset'], settings.get('time_format', '12h'))}", "sunset.png"),
+                (i18n.label(lang, "wind"), f"{cur['wind']} {wind_unit} {cur['wind_arrow']}", "wind.png"),
+                (i18n.label(lang, "humidity"), f"{cur['humidity']}%", "humidity.png"),
+                ("Pressure", f"{cur['pressure']} hPa", "pressure.png"),
+                ("UV Index", f"{cur['uv']}", "uvi.png"),
+                ("Visibility", f"{cur['visibility']} {UNITS[units]['dist']}", "visibility.png"),
+                ("Air Quality", f"{cur['aqi']}", "aqi.png"),
+            ]
+            m_rows = metrics_box.split_rows([1, 1, 1, 1], gap=canvas.pt(2))
+            m_idx = 0
+            font_lbl = canvas.get_font("Roboto-Regular", 11)
+            font_val = canvas.get_font("Roboto-Bold", 12, font_weight="bold")
+            for row in m_rows:
+                cols = row.split_columns([1, 1], gap=canvas.pt(4))
+                for col in cols:
+                    if m_idx < len(pts):
+                        lbl, val, ico_name = pts[m_idx]
+                        ico_sub, txt_sub = col.split_columns([2.2, 7.8], gap=canvas.pt(2))
+                        ico_p = resolve_icon(ico_name)
+                        if ico_p:
+                            canvas.paste_icon(ico_p, ico_sub.inset(canvas.pt(2)), size_pt=14)
+                        canvas.draw_text(lbl, (txt_sub.x, txt_sub.y), font=font_lbl, fill="#555555")
+                        canvas.draw_text(val, (txt_sub.x, txt_sub.y + canvas.pt(12)), font=font_val, fill="#000000")
+                        m_idx += 1
 
-    def _draw_graph(self, canvas, box, hourly, units, time_format, icon_step):
+    def _draw_graph(self, canvas, box, hourly, units, time_format, icon_step, display_rain=False, display_icons=False):
         if not hourly:
             return
         temps = [h["temp"] for h in hourly]
@@ -633,13 +685,14 @@ class WeatherWidget(BaseWidget):
             canvas.draw.polygon(poly_points, fill="#ffe8bc")
 
         # Rain bars (precipitation probability over time)
-        for i, h in enumerate(hourly):
-            pop = h.get("precip_prob", 0)
-            if pop > 0:
-                bar_h = int((pop / 100.0) * chart_h * 0.4)
-                bx = start_x + i * step_x - canvas.pt(2)
-                by = start_y + chart_h - bar_h
-                canvas.draw.rectangle([bx, by, bx + canvas.pt(4), start_y + chart_h], fill="#3b6cff")
+        if display_rain:
+            for i, h in enumerate(hourly):
+                pop = h.get("precip_prob", 0)
+                if pop > 0:
+                    bar_h = int((pop / 100.0) * chart_h * 0.4)
+                    bx = start_x + i * step_x - canvas.pt(2)
+                    by = start_y + chart_h - bar_h
+                    canvas.draw.rectangle([bx, by, bx + canvas.pt(4), start_y + chart_h], fill="#3b6cff")
 
         # Temperature line
         canvas.draw.line(coords, fill="#ff9900", width=canvas.pt(3), joint="round")
@@ -650,20 +703,21 @@ class WeatherWidget(BaseWidget):
             px = coords[i][0]
             if i % 3 == 0:
                 canvas.draw_text(self._fmt_hour(h["time"], time_format), (px, box.bottom - canvas.pt(4)), font=font_t, fill="#000000", anchor="mb")
-            # hourly condition icons if icon_step provided (placed below the graph curve area)
-            if icon_step and i % icon_step == 0:
+            # hourly condition icons, gated by both display flag and step
+            if display_icons and icon_step and i % icon_step == 0:
                 ico_path = resolve_icon(h.get("icon"))
                 if ico_path:
                     canvas.paste_icon(ico_path, Rect(px - canvas.pt(9), start_y + chart_h - canvas.pt(24), canvas.pt(18), canvas.pt(18)), size_pt=16)
 
-    def _draw_forecast(self, canvas, box, forecast, units, moon_phase, lat):
+    def _draw_forecast(self, canvas, box, forecast, units, moon_phase, lat, forecast_days=7):
         days_map = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        f_cols = box.split_columns([1] * 7, gap=canvas.pt(6))
+        n = min(forecast_days, len(forecast), 7)
+        if n <= 0:
+            return
+        f_cols = box.split_columns([1] * n, gap=canvas.pt(6))
         font_f_day = canvas.get_font("Roboto-Bold", 13, font_weight="bold")
         font_f_tmp = canvas.get_font("Roboto-Regular", 12)
-        for i in range(7):
-            if i >= len(forecast):
-                break
+        for i in range(n):
             f = forecast[i]
             col = f_cols[i]
             canvas.draw_card(col, radius=8, fill="#ffffff", outline="#000000", width=1)

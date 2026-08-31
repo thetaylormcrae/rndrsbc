@@ -206,6 +206,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 <div class="text-[10px] text-slate-400">Live conditions, AQI, & 7-day forecast</div>
               </div>
             </button>
+            <button onclick="addWidgetToPlaylist('clock')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
+              <div class="w-7 h-7 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs mt-0.5">🕒</div>
+              <div>
+                <div class="text-xs font-bold text-slate-200">Clock & Date</div>
+                <div class="text-[10px] text-slate-400">Digital / Analog dial with local date</div>
+              </div>
+            </button>
             <button onclick="addWidgetToPlaylist('calendar')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
               <div class="w-7 h-7 rounded bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-xs mt-0.5">📅</div>
               <div>
@@ -213,18 +220,25 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 <div class="text-[10px] text-slate-400">Monthly grid & synchronized iCal feed</div>
               </div>
             </button>
-            <button onclick="addWidgetToPlaylist('system_stats')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
-              <div class="w-7 h-7 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs mt-0.5">💻</div>
+            <button onclick="addWidgetToPlaylist('news')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
+              <div class="w-7 h-7 rounded bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-xs mt-0.5">📰</div>
               <div>
-                <div class="text-xs font-bold text-slate-200">System Monitor</div>
-                <div class="text-[10px] text-slate-400">Pi CPU, RAM, and storage stats</div>
+                <div class="text-xs font-bold text-slate-200">News & RSS Feed</div>
+                <div class="text-[10px] text-slate-400">Live headlines from BBC, HN, Reuters, NYT</div>
               </div>
             </button>
-            <button onclick="addWidgetToPlaylist('onboarding')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
-              <div class="w-7 h-7 rounded bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-xs mt-0.5">📱</div>
+            <button onclick="addWidgetToPlaylist('quotes')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
+              <div class="w-7 h-7 rounded bg-yellow-500/20 text-yellow-400 flex items-center justify-center font-bold text-xs mt-0.5">💡</div>
               <div>
-                <div class="text-xs font-bold text-slate-200">Device Setup & QR Claim</div>
-                <div class="text-[10px] text-slate-400">QR code + Wi-Fi/AP provisioning instructions</div>
+                <div class="text-xs font-bold text-slate-200">Daily Quotes & Thoughts</div>
+                <div class="text-[10px] text-slate-400">Inspirational & philosophical pull-quotes</div>
+              </div>
+            </button>
+            <button onclick="addWidgetToPlaylist('crypto')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
+              <div class="w-7 h-7 rounded bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs mt-0.5">⚡</div>
+              <div>
+                <div class="text-xs font-bold text-slate-200">Crypto & Markets</div>
+                <div class="text-[10px] text-slate-400">Live BTC, ETH, and market asset prices</div>
               </div>
             </button>
             <button onclick="addWidgetToPlaylist('photo_frame')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
@@ -234,11 +248,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                 <div class="text-[10px] text-slate-400">Rotate uploaded personal photos</div>
               </div>
             </button>
-            <button onclick="addWidgetToPlaylist('composite_grid')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
-              <div class="w-7 h-7 rounded bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs mt-0.5">🧩</div>
+            <button onclick="addWidgetToPlaylist('system_stats')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
+              <div class="w-7 h-7 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs mt-0.5">💻</div>
               <div>
-                <div class="text-xs font-bold text-slate-200">Multi-Zone Layout Grid</div>
-                <div class="text-[10px] text-slate-400">Combine several widgets on one screen</div>
+                <div class="text-xs font-bold text-slate-200">System Monitor</div>
+                <div class="text-[10px] text-slate-400">Pi CPU, RAM, and storage stats</div>
               </div>
             </button>
             <button onclick="addWidgetToPlaylist('network')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
@@ -246,6 +260,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
               <div>
                 <div class="text-xs font-bold text-slate-200">Network Diagnostics</div>
                 <div class="text-[10px] text-slate-400">Wi-Fi SSID, signal, IP, gateway ping</div>
+              </div>
+            </button>
+            <button onclick="addWidgetToPlaylist('onboarding')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
+              <div class="w-7 h-7 rounded bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-xs mt-0.5">📱</div>
+              <div>
+                <div class="text-xs font-bold text-slate-200">Device Setup & QR Claim</div>
+                <div class="text-[10px] text-slate-400">QR code + Wi-Fi/AP provisioning instructions</div>
               </div>
             </button>
           </div>
@@ -359,9 +380,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           <div class="col-span-2">
             <label class="block text-xs font-semibold text-slate-400 mb-1.5">Physical Buttons (GPIO)</label>
             <div class="grid grid-cols-3 gap-2 text-[10px] text-slate-500">
-              <div class="bg-slate-900/40 border border-slate-800 rounded-lg px-2 py-1.5">NEXT <span class="text-slate-400">pin 17</span></div>
-              <div class="bg-slate-900/40 border border-slate-800 rounded-lg px-2 py-1.5">PREV <span class="text-slate-400">pin 27</span></div>
-              <div class="bg-slate-900/40 border border-slate-800 rounded-lg px-2 py-1.5">TOGGLE QUIET <span class="text-slate-400">pin 22</span></div>
+              <div class="bg-slate-900/40 border border-slate-800 rounded-lg px-2 py-1.5">NEXT <span class="text-slate-400">pin 5</span></div>
+              <div class="bg-slate-900/40 border border-slate-800 rounded-lg px-2 py-1.5">PREV <span class="text-slate-400">pin 6</span></div>
+              <div class="bg-slate-900/40 border border-slate-800 rounded-lg px-2 py-1.5">TOGGLE QUIET <span class="text-slate-400">pin 12</span></div>
             </div>
             <p class="text-[10px] text-slate-500 mt-1.5">Wire buttons to GND; cycle widgets, go back, or pause/restart refreshes. Disabled automatically on simulator/laptop (no GPIO).</p>
           </div>
@@ -795,14 +816,22 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
       if (widgetType === "weather") {
         newWidget.settings = { location: "New York City", latitude: 40.7128, longitude: -74.0060, units: "imperial", frame: "None", weatherProvider: "OpenMeteo", displayGraph: true, moonPhase: true, graphIconStep: 3, time_format: "12h" };
+      } else if (widgetType === "clock") {
+        newWidget.settings = { style: "digital", time_format: "12h", show_date: true, frame: "None" };
       } else if (widgetType === "calendar") {
         newWidget.settings = { title: "My Schedule", ics_url: "", first_day_sunday: true, frame: "None" };
+      } else if (widgetType === "news") {
+        newWidget.settings = { feed_source: "BBC World News", custom_url: "", max_stories: 4, frame: "None" };
+      } else if (widgetType === "quotes") {
+        newWidget.settings = { category: "Inspirational", custom_quote: "", custom_author: "", frame: "None" };
+      } else if (widgetType === "crypto") {
+        newWidget.settings = { currency: "USD ($)", coins: "bitcoin,ethereum,solana", frame: "None" };
       } else if (widgetType === "system_stats") {
         newWidget.settings = { hostname: "rndrSBC Node", frame: "None" };
       } else if (widgetType === "onboarding") {
         newWidget.settings = { title: "Let's set up your display", frame: "None" };
       } else if (widgetType === "photo_frame") {
-        newWidget.settings = { caption: true, mode: "sequential", frame: "None" };
+        newWidget.settings = { caption: true, mode: "sequential", scale_mode: "cover", frame: "None" };
       } else if (widgetType === "composite_grid") {
         newWidget.settings = { layout_type: "sidebar_right", gap: 8, zones: {}, frame: "None" };
       } else if (widgetType === "network") {
@@ -956,7 +985,117 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             </div>
           </div>
         `;
-      } else if (item.widget === 'system_stats') {
+      } else if (item.widget === 'clock') {
+        settingsFieldsHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Clock Style</label>
+              <select onchange="updateSetting(${idx}, 'style', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                <option value="digital" ${s.style !== 'analog' ? 'selected' : ''}>Digital Clock</option>
+                <option value="analog" ${s.style === 'analog' ? 'selected' : ''}>Analog Dial</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Time Format</label>
+              <select onchange="updateSetting(${idx}, 'time_format', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                <option value="12h" ${s.time_format !== '24h' ? 'selected' : ''}>12-Hour (AM/PM)</option>
+                <option value="24h" ${s.time_format === '24h' ? 'selected' : ''}>24-Hour</option>
+              </select>
+            </div>
+            <div class="flex items-center pt-5">
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.show_date !== false ? 'checked' : ''} onchange="updateSetting(${idx}, 'show_date', this.checked)" class="rounded accent-orange-600" />
+                <span>Show Date & Day</span>
+              </label>
+            </div>
+          </div>
+        `;
+      } else if (item.widget === 'news') {
+        settingsFieldsHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Feed Source Preset</label>
+              <select onchange="updateSetting(${idx}, 'feed_source', this.value); toggleNewsCustom(${idx}, this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                <option value="BBC World News" ${s.feed_source === 'BBC World News' ? 'selected' : ''}>BBC World News</option>
+                <option value="Hacker News" ${s.feed_source === 'Hacker News' ? 'selected' : ''}>Hacker News</option>
+                <option value="Reuters" ${s.feed_source === 'Reuters' ? 'selected' : ''}>Reuters</option>
+                <option value="New York Times" ${s.feed_source === 'New York Times' ? 'selected' : ''}>New York Times</option>
+                <option value="Custom URL" ${s.feed_source === 'Custom URL' ? 'selected' : ''}>Custom RSS / Atom URL</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Max Headlines</label>
+              <input type="number" min="1" max="8" value="${s.max_stories || 4}" onchange="updateSetting(${idx}, 'max_stories', parseInt(this.value))" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+            </div>
+            <div id="news-custom-${idx}" class="${s.feed_source === 'Custom URL' ? '' : 'hidden'} sm:col-span-3">
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Custom RSS / Atom Feed URL</label>
+              <input type="url" value="${s.custom_url || ''}" placeholder="https://example.com/feed.xml" onchange="updateSetting(${idx}, 'custom_url', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+            </div>
+          </div>
+        `;
+      } else if (item.widget === 'quotes') {
+        settingsFieldsHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Quote Style</label>
+              <select onchange="updateSetting(${idx}, 'category', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                <option value="Inspirational" ${s.category === 'Inspirational' ? 'selected' : ''}>Inspirational (ZenQuotes)</option>
+                <option value="Philosophy" ${s.category === 'Philosophy' ? 'selected' : ''}>Philosophy & Ideas</option>
+                <option value="Minimalist" ${s.category === 'Minimalist' ? 'selected' : ''}>Minimalist Quotes</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Custom Author (Optional)</label>
+              <input type="text" value="${s.custom_author || ''}" placeholder="Overrides attribution" onchange="updateSetting(${idx}, 'custom_author', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Custom Quote Text (Overrides daily feed)</label>
+              <input type="text" value="${s.custom_quote || ''}" placeholder="Leave blank to use daily rotating quotes" onchange="updateSetting(${idx}, 'custom_quote', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+            </div>
+          </div>
+        `;
+      } else if (item.widget === 'crypto') {
+        settingsFieldsHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Display Currency</label>
+              <select onchange="updateSetting(${idx}, 'currency', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                <option value="USD ($)" ${s.currency !== 'EUR (€)' && s.currency !== 'GBP (£)' ? 'selected' : ''}>USD ($)</option>
+                <option value="EUR (€)" ${s.currency === 'EUR (€)' ? 'selected' : ''}>EUR (€)</option>
+                <option value="GBP (£)" ${s.currency === 'GBP (£)' ? 'selected' : ''}>GBP (£)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Tracked Coins (CoinGecko IDs)</label>
+              <input type="text" value="${s.coins || 'bitcoin,ethereum,solana'}" placeholder="e.g. bitcoin,ethereum,solana" onchange="updateSetting(${idx}, 'coins', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+            </div>
+          </div>
+        `;
+      } else if (item.widget === 'photo_frame') {
+        settingsFieldsHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Display Mode</label>
+              <select onchange="updateSetting(${idx}, 'mode', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                <option value="sequential" ${s.mode !== 'random' ? 'selected' : ''}>Sequential Rotation</option>
+                <option value="random" ${s.mode === 'random' ? 'selected' : ''}>Random / Shuffle</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Image Fit & Scale</label>
+              <select onchange="updateSetting(${idx}, 'scale_mode', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                <option value="cover" ${s.scale_mode !== 'contain' ? 'selected' : ''}>Fill / Cover (No Bars)</option>
+                <option value="contain" ${s.scale_mode === 'contain' ? 'selected' : ''}>Fit / Contain (Full Photo)</option>
+              </select>
+            </div>
+            <div class="flex items-center pt-5">
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.caption !== false ? 'checked' : ''} onchange="updateSetting(${idx}, 'caption', this.checked)" class="rounded accent-orange-600" />
+                <span>Show Photo Date / Filename</span>
+              </label>
+            </div>
+          </div>
+        `;
         settingsFieldsHTML = `
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -1014,8 +1153,25 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }
 
     function getWidgetTitle(type) {
-      const map = { weather: '☀️ Weather Dashboard', calendar: '📅 Calendar & Agenda', system_stats: '💻 System Monitor', onboarding: '📱 Device Setup & QR Claim', photo_frame: '🖼️ Photo Frame', composite_grid: '🧩 Multi-Zone Layout Grid', network: '📶 Network Diagnostics' };
+      const map = {
+        weather: '☀️ Weather Dashboard',
+        clock: '🕒 Clock & Date',
+        calendar: '📅 Calendar & Agenda',
+        news: '📰 News & RSS Feed',
+        quotes: '💡 Daily Quotes & Thoughts',
+        crypto: '⚡ Crypto & Markets',
+        system_stats: '💻 System Monitor',
+        onboarding: '📱 Device Setup & QR Claim',
+        photo_frame: '🖼️ Photo Frame',
+        composite_grid: '🧩 Multi-Zone Layout Grid',
+        network: '📶 Network Diagnostics'
+      };
       return map[type] || type;
+    }
+
+    function toggleNewsCustom(idx, val) {
+      const el = document.getElementById(`news-custom-${idx}`);
+      if (el) el.classList.toggle('hidden', val !== 'Custom URL');
     }
 
     function initWeatherMap(idx, lat, lon) {
@@ -1206,8 +1362,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }, 30000);
     })();
   </script>
-  <!-- Device Telemetry & OTA Update Panel -->
-  <div class="max-w-6xl mx-auto px-4 pb-10 pt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+  <!-- Device Telemetry, Appliance Administration, OTA Update & Photo Library Panels -->
+  <div class="max-w-6xl mx-auto px-4 pb-10 pt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
     <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
       <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">📡 Device Health</div>
       <div id="telemetry-content" class="text-[11px] text-slate-400 space-y-1">
@@ -1215,12 +1371,45 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </div>
       <button onclick="loadTelemetry()" class="mt-2 text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Refresh</button>
     </div>
+
     <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
-      <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">🔄 Software Updates</div>
-      <div id="update-content" class="text-[11px] text-slate-400">Checking…</div>
-      <button onclick="checkUpdate()" class="mt-2 text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Check for Updates</button>
-      <button onclick="applyUpdate()" class="mt-2 ml-1 text-[10px] px-2 py-1 rounded bg-orange-600/80 hover:bg-orange-500 text-white">Apply Update</button>
+      <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">⚡ System & Power</div>
+      <div class="space-y-1.5 pt-1">
+        <button onclick="triggerPanelClean()" class="w-full text-left text-[11px] px-2.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/20 flex items-center justify-between">
+          <span>🧹 Clean Panel Cycle</span>
+          <span class="text-[9px] text-slate-500">Anti-Ghosting</span>
+        </button>
+        <button onclick="systemAction('restart')" class="w-full text-left text-[11px] px-2.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 flex items-center justify-between">
+          <span>🔄 Restart rndrSBC</span>
+          <span class="text-[9px] text-slate-500">Service</span>
+        </button>
+        <div class="grid grid-cols-2 gap-1.5 pt-0.5">
+          <button onclick="systemAction('reboot')" class="text-center text-[11px] px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">
+            Reboot Pi
+          </button>
+          <button onclick="systemAction('shutdown')" class="text-center text-[11px] px-2 py-1 rounded bg-rose-950/30 hover:bg-rose-900/40 text-rose-300 border border-rose-800/40">
+            Power Off
+          </button>
+        </div>
+      </div>
     </div>
+
+    <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
+      <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">💾 Backup & Updates</div>
+      <div id="update-content" class="text-[11px] text-slate-400 mb-2">Checking…</div>
+      <div class="flex items-center space-x-1.5 mb-2.5">
+        <button onclick="checkUpdate()" class="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Check OTA</button>
+        <button onclick="applyUpdate()" class="text-[10px] px-2 py-1 rounded bg-orange-600/80 hover:bg-orange-500 text-white">Apply</button>
+      </div>
+      <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
+        <button onclick="exportConfigBackup()" class="text-[10px] px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">Export JSON</button>
+        <label class="text-[10px] px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 cursor-pointer">
+          Import JSON
+          <input type="file" accept=".json" onchange="importConfigBackup(event)" class="hidden" />
+        </label>
+      </div>
+    </div>
+
     <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
       <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">🖼️ Photo Library</div>
       <input type="file" id="photo-upload" accept="image/*" class="text-[10px] text-slate-400 mb-2 w-full" />
@@ -1307,6 +1496,70 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       const d = await r.json().catch(() => ({}));
       document.getElementById('photos-content').innerHTML = `<div class="${r.ok ? 'text-emerald-400' : 'text-rose-400'}">${d.message || d.error || 'done'}</div>`;
       loadPhotos();
+    }
+
+    function exportConfigBackup() {
+      if (!currentConfig) return;
+      const blob = new Blob([JSON.stringify(currentConfig, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rndrsbc-config-backup-${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importConfigBackup(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const imported = JSON.parse(e.target.result);
+          if (!imported || typeof imported !== 'object') throw new Error('Invalid JSON');
+          if (!confirm('Restore configuration from this backup? All current settings will be replaced.')) return;
+          currentConfig = imported;
+          await saveAndApply();
+          alert('Configuration restored and applied successfully!');
+          window.location.reload();
+        } catch (err) {
+          alert('Failed to import configuration: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    async function triggerPanelClean() {
+      if (!confirm('Run full anti-ghosting panel clean cycle now?')) return;
+      try {
+        const res = await fetch('/api/panel/clean', { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+          alert('Clean cycle scheduled. The display will refresh shortly.');
+          setTimeout(refreshDisplayNow, 1500);
+        } else {
+          alert('Failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (e) {
+        alert('Network error triggering clean cycle: ' + e.message);
+      }
+    }
+
+    async function systemAction(action) {
+      const labels = { restart: 'Restart rndrSBC background daemon', reboot: 'Reboot Raspberry Pi hardware', shutdown: 'Power off system completely' };
+      if (!confirm(`Are you sure you want to ${labels[action] || action}?`)) return;
+      try {
+        const res = await fetch(`/api/system/${action}`, { method: 'POST' });
+        if (res.ok) {
+          alert(`Command sent: ${labels[action]}. The system is processing.`);
+        } else {
+          const data = await res.json().catch(() => ({}));
+          alert(`Failed: ${data.error || 'Server error'}`);
+        }
+      } catch (e) {
+        alert('Network error: ' + e.message);
+      }
     }
 
     loadTelemetry();
@@ -1912,6 +2165,24 @@ class ProductionHandler(QuietHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(b'{"status":"ok"}')
+            return
+
+        if parsed.path == "/api/panel/clean":
+            try:
+                from core.panel_health import get_health
+                gov = get_health()
+                gov.record_full_refresh()
+                if self.scheduler:
+                    self.scheduler.trigger_render_now(0, force_hardware=True)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(b'{"status":"clean_cycle_scheduled"}')
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
             return
 
         if parsed.path == "/api/config":

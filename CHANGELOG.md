@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.8.5 (2026-08-31)
+
+### Bug Fixes
+
+- **engine**: Comprehensive prime-time stability, background caching, network resolution, and
+  hardware metric polish
+  ([`7a525d0`](https://github.com/thetaylormcrae/rndrsbc/commit/7a525d0ee86ea0d63ff62c3c9ee70e88e0a63024))
+
+
 ## v0.8.4 (2026-08-31)
 
 ### Bug Fixes

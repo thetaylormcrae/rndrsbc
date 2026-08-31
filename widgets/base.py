@@ -106,6 +106,10 @@ class BaseWidget(ABC):
     name: str = "Base Widget"
     description: str = ""
     default_interval_minutes: int = 15
+    config: dict = {}
+
+    def __init__(self, config: dict = None):
+        self.config = config or {}
 
     # Responsive-layout contract. Widgets that cannot render below a certain
     # size declare it here so the grid compositor can hide / shrink them.

@@ -152,7 +152,7 @@ class CalendarWidget(BaseWidget):
         frame_style = settings.get("frame", "None")
         start_sunday = settings.get("first_day_sunday", True)
 
-        lang = settings.get("language", self.config.get("language", "en"))
+        lang = settings.get("language") or getattr(self, "config", {}).get("language", "en")
 
         events = self._fetch_events(ics_url, caldav_url, caldav_user, caldav_pass)
         now = self.get_local_now(settings=settings)

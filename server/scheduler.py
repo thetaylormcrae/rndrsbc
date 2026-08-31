@@ -20,10 +20,11 @@ logger = logging.getLogger("rndrSBC.scheduler")
 
 class Scheduler:
     def __init__(self, display, config_data: dict, widget_registry: dict):
-        # Fail-fast: never boot with a config that is provably invalid. Non-fatal
-        # unknowns are logged as warnings and boot proceeds.
+        # Fail-fast with self-healing: never boot with a config that is provably invalid.
+        # Missing required keys are safely self-healed so an unattended appliance
+        # never crash-loops. Unknowns/repairs are logged as warnings and boot proceeds.
         try:
-            _, self.config_warnings = validate_config(config_data)
+            _, self.config_warnings = validate_config(config_data, self_heal=True)
         except ConfigError as e:
             logger.critical("config rejected at boot: %s", e)
             raise

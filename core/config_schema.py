@@ -41,11 +41,13 @@ class ConfigError(Exception):
     """Raised when configuration is provably invalid. Message lists all problems."""
 
 
-def validate_config(raw: Any) -> Tuple[Dict[str, Any], List[str]]:
+def validate_config(raw: Any, self_heal: bool = False) -> Tuple[Dict[str, Any], List[str]]:
     """Validate config; returns ``(config, warnings)`` or raises :class:`ConfigError`.
 
     Accepts a parsed dict or a JSON string. All *provable* problems are raised
     together in one message; harmless unknowns are returned as warnings.
+    When ``self_heal=True`` is passed, missing required keys are populated
+    from safe defaults and flagged as warnings rather than raising.
     """
     if isinstance(raw, (str, bytes)):
         raw = json.loads(raw)
@@ -54,12 +56,12 @@ def validate_config(raw: Any) -> Tuple[Dict[str, Any], List[str]]:
 
     problems: List[str] = []
     warnings: List[str] = []
-    _known = {"display", "device", "active_playlist", "playlists", "_comment",
-              "schema_version", "quiet_hours", "app", "rotation", "refresh_mode",
-              # Runtime/managed secret kept in config.json. Deliberately NOT part of the
-              # user-editable dashboard surface; stored here so the auth gate
-              # (_has_admin_setup) can read it and device reboot self-heals the config.
-              "admin_password_hash",}
+    _known = {
+        "display", "device", "active_playlist", "playlists", "_comment",
+        "schema_version", "quiet_hours", "app", "rotation", "refresh_mode",
+        "admin_password_hash", "migrated_at", "buttons", "wifi", "weather",
+        "language", "secrets", "api_keys",
+    }
 
     for key in raw:
         if key not in _known:
@@ -67,14 +69,17 @@ def validate_config(raw: Any) -> Tuple[Dict[str, Any], List[str]]:
 
     for key, (typ,) in _REQUIRED_TOP.items():
         if key not in raw:
-            # Self-heal: a partial/corrupt/legacy on-disk config must never
-            # hard-crash an unattended device at boot. Fill the missing required
-            # key with a safe default and flag it so the operator can see why.
-            raw[key] = _default_for(key)
-            warnings.append(
-                f"{key}: required top-level key was missing - regenerated, "
-                f"consider re-saving config from the dashboard"
-            )
+            if self_heal:
+                # Self-heal: a partial/corrupt/legacy on-disk config must never
+                # hard-crash an unattended device at boot. Fill the missing required
+                # key with a safe default and flag it so the operator can see why.
+                raw[key] = _default_for(key)
+                warnings.append(
+                    f"{key}: required top-level key was missing - regenerated, "
+                    f"consider re-saving config from the dashboard"
+                )
+            else:
+                problems.append(f"{key}: required top-level key is missing")
         elif not isinstance(raw[key], typ):
             problems.append(f"{key}: expected {typ.__name__}")
 
@@ -137,10 +142,12 @@ def _validate_display(disp: Any, problems: List[str], warnings: List[str]) -> No
                 if k in ph and not isinstance(ph[k], (int, float)):
                     problems.append(f"display.panel_health.{k}: expected number")
     for k in disp:
-        if k not in {"driver","model","orientation","refresh_mode","panel_health",
-                     "width","height","dither","color_mode","spi","pins","sleep",
-                     "partial","rot_sequence","lut","update_interval",
-                     "h_flip","v_flip","pixel_pair_swap","saturation"}:
+        if k not in {"driver", "model", "orientation", "rotation", "rotate",
+                     "refresh_mode", "panel_health", "width", "height",
+                     "screen_width", "screen_height", "output_path",
+                     "dither", "color_mode", "spi", "pins", "sleep",
+                     "partial", "rot_sequence", "lut", "update_interval",
+                     "h_flip", "v_flip", "pixel_pair_swap", "saturation"}:
             warnings.append(f"display.{k}: unknown key (ignored)")
 
 

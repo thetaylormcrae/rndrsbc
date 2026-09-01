@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.10.0 (2026-08-31)
+
+### Features
+
+- **admin**: Complete administrative configurability, backup/restore, power controls, and widget
+  editors
+  ([`d50ec57`](https://github.com/thetaylormcrae/rndrsbc/commit/d50ec578a49de4ac63b244bc17103b79c157ffa7))
+
+
 ## v0.9.0 (2026-08-31)
 
 ### Features

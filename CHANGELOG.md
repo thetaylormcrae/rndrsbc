@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.10.2 (2026-09-01)
+
+### Bug Fixes
+
+- **update**: Bypass stale pip index cache + verify version actually moved
+  ([`efaf233`](https://github.com/thetaylormcrae/rndrsbc/commit/efaf233f722c33386abf71c6422dbac040e71a6d))
+
+
 ## v0.10.1 (2026-09-01)
 
 

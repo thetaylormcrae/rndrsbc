@@ -69,6 +69,18 @@ DASHBOARD_HTML = """<!DOCTYPE html>
                         linear-gradient(-45deg, transparent 75%, #182234 75%);
       background-size: 20px 20px;
     }
+    .btn-spinner {
+      display: inline-block;
+      width: 12px; height: 12px;
+      border: 2px solid rgba(255,255,255,0.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: btnspin 0.7s linear infinite;
+      vertical-align: -2px;
+      margin-right: 6px;
+    }
+    .btn-busy { opacity: 0.7; cursor: progress; }
+    @keyframes btnspin { to { transform: rotate(360deg); } }
   </style>
   <!-- Leaflet Map Library (OpenStreetMap) -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -91,11 +103,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     </div>
 
     <div class="flex items-center space-x-3">
-      <button onclick="refreshDisplayNow()" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition">
+      <button id="btn-refresh" onclick="refreshDisplayNow()" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition">
         <svg class="w-3.5 h-3.5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
         <span>Refresh Screen</span>
       </button>
-      <button onclick="saveAndApply()" class="flex items-center space-x-1.5 px-4 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-xs font-semibold text-white shadow-lg shadow-orange-600/30 transition">
+      <button id="btn-apply" onclick="saveAndApply()" class="flex items-center space-x-1.5 px-4 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-xs font-semibold text-white shadow-lg shadow-orange-600/30 transition">
         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
         <span>Save & Apply</span>
       </button>
@@ -434,7 +446,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
             </div>
           </div>
           <div id="pwd-feedback" class="hidden text-xs font-medium"></div>
-          <button onclick="updatePassword()" class="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 font-semibold text-xs text-white shadow-md shadow-orange-600/30 transition">
+          <button id="btn-save-pwd" onclick="updatePassword()" class="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 font-semibold text-xs text-white shadow-md shadow-orange-600/30 transition">
             Update Admin Password
           </button>
         </div>
@@ -467,7 +479,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <div id="setup-err" class="hidden text-xs text-rose-400 font-medium"></div>
       </div>
 
-      <button onclick="submitSetup()" class="w-full py-2.5 rounded-lg bg-orange-600 hover:bg-orange-500 font-semibold text-sm text-white shadow-lg shadow-orange-600/30 transition">
+      <button id="btn-setup" onclick="submitSetup()" class="w-full py-2.5 rounded-lg bg-orange-600 hover:bg-orange-500 font-semibold text-sm text-white shadow-lg shadow-orange-600/30 transition">
         Complete Initial Setup & Secure Device
       </button>
     </div>
@@ -547,6 +559,26 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
     }
 
+    // Generic "saving…" animation: disables the button and swaps its
+    // content for a spinner + busyLabel while awaitable runs, then restores
+    // the original label. Original child nodes are saved so the exact markup
+    // (icons, etc.) comes back unchanged.
+    async function spinButton(btn, awaitable, busyLabel) {
+      if (!btn) return await awaitable;
+      const original = [...btn.childNodes];
+      const busyText = (busyLabel || 'Saving') + '…';
+      btn.disabled = true;
+      btn.classList.add('btn-busy');
+      btn.innerHTML = '<span class="btn-spinner"></span><span>' + busyText + '</span>';
+      try {
+        return await awaitable;
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('btn-busy');
+        btn.replaceChildren(...original);
+      }
+    }
+
     async function submitSetup() {
       const p1 = document.getElementById('setup-pwd').value;
       const p2 = document.getElementById('setup-pwd-confirm').value;
@@ -563,11 +595,12 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         return;
       }
 
-      const res = await fetch('/api/setup', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({password: p1})
-      });
+      const res = await spinButton(document.getElementById('btn-setup'),
+        fetch('/api/setup', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({password: p1})
+        }));
 
       if (res.ok) {
         document.getElementById('modal-setup').classList.add('hidden');
@@ -647,11 +680,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
 
       try {
-        const res = await fetch('/api/auth/password', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({current_password: cur, new_password: p1})
-        });
+        const res = await spinButton(document.getElementById('btn-save-pwd'),
+          fetch('/api/auth/password', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({current_password: cur, new_password: p1})
+          }),
+          'Saving');
         const data = await res.json();
         if (res.ok) {
           fb.textContent = "Admin password updated successfully!";
@@ -1445,11 +1480,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       updateQuietHoursSettings();
       updateDeviceSettings();
 
-      const res = await fetch('/api/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(currentConfig)
-      });
+      const res = await spinButton(document.getElementById('btn-apply'),
+        fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentConfig)
+        }),
+        'Saving');
 
       if (res.status === 401) {
         showLoginModal();
@@ -1462,7 +1499,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }
 
     async function refreshDisplayNow() {
-      const res = await fetch('/api/refresh', { method: 'POST' });
+      const res = await spinButton(document.getElementById('btn-refresh'),
+        fetch('/api/refresh', { method: 'POST' }),
+        'Refreshing');
       if (res.status === 401) {
         showLoginModal();
         return;
@@ -1544,7 +1583,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
       <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">🖼️ Photo Library</div>
       <input type="file" id="photo-upload" accept="image/*" class="text-[10px] text-slate-400 mb-2 w-full" />
-      <button onclick="uploadPhoto()" class="text-[10px] px-2 py-1 rounded bg-pink-600/80 hover:bg-pink-500 text-white">Upload Photo</button>
+      <button id="btn-upload-photo" onclick="uploadPhoto()" class="text-[10px] px-2 py-1 rounded bg-pink-600/80 hover:bg-pink-500 text-white">Upload Photo</button>
       <button onclick="loadPhotos()" class="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Refresh</button>
       <div id="photos-content" class="mt-2 text-[11px] text-slate-500"></div>
     </div>
@@ -1626,7 +1665,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       if (!fileInput.files.length) return;
       const fd = new FormData();
       fd.append('file', fileInput.files[0]);
-      const r = await fetch('/api/photos/upload', { method: 'POST', body: fd });
+      const r = await spinButton(document.getElementById('btn-upload-photo'),
+        fetch('/api/photos/upload', { method: 'POST', body: fd }),
+        'Uploading');
       const resp = await r.json();
       document.getElementById('photos-content').innerHTML = `<div class="text-emerald-400">${resp.path || resp.error || 'uploaded'} ${resp.error ? '(failed)' : ''}</div>`;
       fileInput.value = '';

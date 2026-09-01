@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.10.4 (2026-09-01)
+
+### Bug Fixes
+
+- **dashboard**: Re-load auth-gated panels after SPA login
+  ([`1bb5b12`](https://github.com/thetaylormcrae/rndrsbc/commit/1bb5b12f875eabc79dac8c39095a4e59d1f2251d))
+
+
 ## v0.10.3 (2026-09-01)
 
 ### Bug Fixes

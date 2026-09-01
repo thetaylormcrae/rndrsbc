@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.10.3 (2026-09-01)
+
+### Bug Fixes
+
+- **update**: Query PyPI JSON API for latest version so OTA check no longer depends on the
+  widgets-only registry feed
+  ([`dfb6956`](https://github.com/thetaylormcrae/rndrsbc/commit/dfb69565d78399778579150d55a3b2055c6077e0))
+
+
 ## v0.10.2 (2026-09-01)
 
 ### Bug Fixes

@@ -13,7 +13,7 @@ import secrets
 import logging
 import subprocess
 import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 import urllib.parse
 from PIL import Image
 
@@ -905,6 +905,39 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       });
     }
 
+    // ---- Drag & drop playlist reordering ----
+    let _dragFromIdx = null;
+    function onWidgetDragStart(ev, idx) {
+      _dragFromIdx = idx;
+      ev.dataTransfer.effectAllowed = 'move';
+      try { ev.dataTransfer.setData('text/plain', String(idx)); } catch (e) {}
+      ev.currentTarget.classList.add('opacity-40');
+    }
+    function onWidgetDragOver(ev, idx) {
+      if (_dragFromIdx === null || _dragFromIdx === idx) return;
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = 'move';
+    }
+    function onWidgetDrop(ev, idx) {
+      ev.preventDefault();
+      const from = _dragFromIdx;
+      _dragFromIdx = null;
+      if (from === null || from === idx) return;
+      reorderWidget(from, idx);
+    }
+    function onWidgetDragEnd(ev) {
+      ev.currentTarget.classList.remove('opacity-40');
+      _dragFromIdx = null;
+    }
+    function reorderWidget(fromIdx, toIdx) {
+      const pl = currentConfig.playlists[selectedPlaylistKey] || { items: [] };
+      const items = pl.items || [];
+      if (fromIdx < 0 || fromIdx >= items.length || toIdx < 0 || toIdx >= items.length) return;
+      const [moved] = items.splice(fromIdx, 1);
+      items.splice(toIdx, 0, moved);
+      renderPlaylist();
+    }
+
     function buildWidgetCard(item, idx, total) {
       const card = document.createElement('div');
       card.className = "bg-slate-950/70 border border-slate-800 rounded-xl p-4 transition space-y-3";
@@ -1222,8 +1255,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
 
       card.innerHTML = `
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between cursor-grab" draggable="true" data-idx="${idx}" ondragstart="onWidgetDragStart(event, ${idx})" ondragover="onWidgetDragOver(event, ${idx})" ondrop="onWidgetDrop(event, ${idx})" ondragend="onWidgetDragEnd(event)">
           <div class="flex items-center space-x-2.5">
+            <span class="text-slate-500 cursor-grab select-none" title="Drag to reorder">⠿</span>
             <span class="w-6 h-6 rounded bg-slate-800 text-slate-400 font-bold text-xs flex items-center justify-center">${idx + 1}</span>
             <span class="font-bold text-sm text-slate-200">${getWidgetTitle(item.widget)}</span>
           </div>
@@ -1548,14 +1582,41 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }
 
     async function applyUpdate() {
-      document.getElementById('update-content').innerHTML = '<div>Downloading & applying…</div>';
+      const el = document.getElementById('update-content');
+      el.innerHTML = '<div class="text-sky-300">Checking update state…</div>';
       try {
         const r = await fetch('/api/update/apply', { method: 'POST' });
         const resp = await r.json();
-        document.getElementById('update-content').innerHTML = resp.success
-          ? '<div class="text-emerald-400">Update applied! Restarting…</div>'
-          : `<div class="text-rose-400">Update failed: ${resp.error}</div>`;
-      } catch (e) { document.getElementById('update-content').innerHTML = '<div>Auth required</div>'; }
+        if (resp.status === 'in-progress') {
+          el.innerHTML = '<div class="text-amber-400">An update is already applying — wait for it to finish.</div>';
+          setTimeout(() => pollApplyStatus(el), 2000);
+          return;
+        }
+        if (resp.error) {
+          el.innerHTML = `<div class="text-rose-400">Update failed: ${resp.error}</div>`;
+          return;
+        }
+        el.innerHTML = '<div class="text-sky-300">Applying update (pip install --upgrade rndrsbc)… this can take a few minutes.</div>';
+        await pollApplyStatus(el);
+      } catch (e) { el.innerHTML = `<div class="text-rose-400">Update failed: ${e.message}</div>`; }
+    }
+
+    async function pollApplyStatus(el) {
+      for (let i = 0; i < 180; i++) {
+        try {
+          const s = await fetch('/api/update/apply-status');
+          const st = await s.json();
+          if (st.status === 'finished') {
+            el.innerHTML = st.success
+              ? '<div class="text-emerald-400">Update applied! Restarting…</div>'
+              : `<div class="text-rose-400">Update failed: ${st.error || 'unknown'}</div>`;
+            return;
+          }
+          el.innerHTML = `<div class="text-sky-300">Applying update… (${i * 2}s elapsed)</div>`;
+          await new Promise(res => setTimeout(res, 2000));
+        } catch (e) { el.innerHTML = `<div class="text-rose-400">Update failed: ${e.message}</div>`; return; }
+      }
+      el.innerHTML = '<div class="text-amber-400">Update still running — check again later.</div>';
     }
 
     async function uploadPhoto() {
@@ -1578,12 +1639,14 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         if (!r.ok || d.error) { el.innerHTML = `<div class="text-amber-400">Unable to load photos${d.error ? ': ' + d.error : ''}</div>`; return; }
         const photos = d.photos || [];
         if (!photos.length) { el.innerHTML = '<div class="text-slate-500">No photos yet — upload one above.</div>'; return; }
-        el.innerHTML = photos.map((p) =>
-          `<div class="flex items-center gap-2 justify-between py-1 border-b border-slate-800/60">` +
-            `<span class="truncate max-w-[160px]" title="${(p.path || '').replace(/"/g, '&quot;')}">🖼️ ${p.name}${p.album ? ' <span class="text-slate-600">(' + p.album + ')</span>' : ''} ${p.width ? '· ' + p.width + '×' + p.height + ' · ' + Math.round(p.size/1024) + 'KB' : ''}</span>` +
-            `<button onclick="deletePhoto('${(p.path || '').replace(/'/g, "\\'")}')" class="text-[10px] px-2 py-0.5 rounded hover:bg-rose-950/70 text-slate-500 hover:text-rose-400 border border-slate-800">Delete</button>` +
-          `</div>`
-        ).join('');
+        el.innerHTML = `<div class="photo-grid grid grid-cols-3 gap-2">` +
+          photos.map((p) =>
+            `<div class="relative group rounded-lg overflow-hidden border border-slate-800 bg-slate-900">` +
+              `<img src="/api/photos/file?path=${encodeURIComponent(p.path || '')}" alt="${(p.name || '').replace(/"/g, '&quot;')}" class="w-full h-24 object-cover" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\'p-2 text-[10px] text-slate-500\'>unavailable</div>'">` +
+              `<div class="px-1.5 py-1 text-[9px] text-slate-400 truncate" title="${(p.path || '').replace(/"/g, '&quot;')}">${p.name}${p.album ? ' · ' + p.album : ''}${p.width ? ' · ' + p.width + '×' + p.height : ''}</div>` +
+              `<button onclick="deletePhoto('${(p.path || '').replace(/'/g, "\\'")}')" class="absolute top-1 right-1 text-[9px] px-1.5 py-0.5 rounded bg-rose-950/90 text-rose-300 opacity-0 group-hover:opacity-100 hover:bg-rose-900 border border-rose-800">Delete</button>` +
+            `</div>`
+          ).join('') + `</div>`;
       } catch (e) { el.innerHTML = '<div class="text-amber-400">Photo library unavailable</div>'; }
     }
 
@@ -1668,8 +1731,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 """
 
 
-class QuietServer(HTTPServer):
-    """Suppresses noisy tracebacks when client disconnects mid-request."""
+class QuietServer(ThreadingHTTPServer):
+    """Thread-per-request server: a slow request (OTA pip upgrade, backup export)
+    must never block the rest of the dashboard (telemetry, photos, config saves)."""
+    daemon_threads = True
+
     def handle_error(self, request, client_address):
         exc_type, exc_val, _ = sys.exc_info()
         if issubclass(exc_type, (ConnectionResetError, BrokenPipeError)):
@@ -1751,11 +1817,7 @@ class ProductionHandler(QuietHandler):
 
         # 1b. Health telemetry (protected)
         if parsed.path == "/api/telemetry":
-            if not self._is_authenticated():
-                self.send_response(401)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(b'{"error":"Authentication required"}')
+            if not self._require_auth():
                 return
             from core.telemetry import TELEMETRY
             self.send_response(200)
@@ -1766,11 +1828,7 @@ class ProductionHandler(QuietHandler):
 
         # 1c. OTA update check (protected)
         if parsed.path == "/api/update/check":
-            if not self._is_authenticated():
-                self.send_response(401)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(b'{"error":"Authentication required"}')
+            if not self._require_auth():
                 return
             # Single source of truth: the PyPI/pip path (_update.py). GitHub
             # archive OTA is intentionally not used -- pip is the one upgrade
@@ -1798,6 +1856,34 @@ class ProductionHandler(QuietHandler):
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
                 self.wfile.write(json.dumps({"photos": [], "error": str(e)}).encode("utf-8"))
+            return
+
+        # 1d-bis. Serve a photo file for thumbnails/preview (protected)
+        if parsed.path == "/api/photos/file" and self.command == "GET":
+            if not self._require_auth():
+                return
+            try:
+                from urllib.parse import parse_qs, urlparse as _up
+                from widgets.photo_frame.widget import PHOTO_DIR
+                import os as _os
+                q = parse_qs(_up(self.path).query)
+                target = (q.get("path", [""])[0]).strip()
+                base = _os.path.realpath(PHOTO_DIR)
+                cand = _os.path.realpath(target)
+                if not cand.startswith(base + _os.sep) or not _os.path.isfile(cand):
+                    self.send_response(404); self.send_header("Content-Type", "application/json"); self.end_headers()
+                    self.wfile.write(json.dumps({"error": "Photo not found"}).encode("utf-8")); return
+                with open(cand, "rb") as fh:
+                    data = fh.read()
+                ctype = "image/jpeg" if cand.lower().endswith(".jpg") or cand.lower().endswith(".jpeg") else ("image/png" if cand.lower().endswith(".png") else "image/webp")
+                self.send_response(200)
+                self.send_header("Content-Type", ctype)
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(data)
+            except Exception as e:
+                self.send_response(500); self.send_header("Content-Type", "application/json"); self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode("utf-8"))
             return
 
         # 1e. Delete an uploaded photo (protected)
@@ -2374,20 +2460,54 @@ class ProductionHandler(QuietHandler):
                 self.send_response(500); self.end_headers(); return
             return
 
-        # 6. OTA Self-Update
+        # 6. OTA Self-Update (async: pip upgrade runs in background so a slow
+        #    install never blocks the single-dashboard UX; poll apply-status)
         if parsed.path == "/api/update/apply":
-            # Same pip process as the CLI (`rndrsbc update self`):
-            #   python -m pip install --upgrade rndrsbc  then post-upgrade bootstrap.
-            from rndrsbc import _update
-            try:
-                rc = _update.apply()
-                result = {"success": rc == 0, "error": None if rc == 0 else "pip upgrade exited %d" % rc}
-            except Exception as exc:  # noqa: BLE001
-                result = {"success": False, "error": str(exc)}
-            self.send_response(200 if result["success"] else 500)
+            import threading
+            if getattr(ProductionHandler, "_apply_thread_active", False):
+                self.send_response(409)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"status": "in-progress", "error": "An update is already applying"}).encode("utf-8"))
+                return
+
+            def _do_apply():
+                # Same pip process as the CLI (`rndrsbc update self`):
+                #   python -m pip install --upgrade rndrsbc  then post-upgrade bootstrap.
+                try:
+                    from rndrsbc import _update
+                    rc = _update.apply()
+                    result = {"success": rc == 0, "error": None if rc == 0 else "pip upgrade exited %d" % rc}
+                except Exception as exc:  # noqa: BLE001
+                    result = {"success": False, "error": str(exc)}
+                ProductionHandler._apply_result = result
+                ProductionHandler._apply_thread_active = False
+                ProductionHandler._apply_finished_ts = time.time()
+
+            ProductionHandler._apply_result = None
+            ProductionHandler._apply_thread_active = True
+            t = threading.Thread(target=_do_apply, daemon=True)
+            t.start()
+            self.send_response(202)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps(result).encode("utf-8"))
+            self.wfile.write(json.dumps({"status": "started"}).encode("utf-8"))
+            return
+
+        if parsed.path == "/api/update/apply-status":
+            res = getattr(ProductionHandler, "_apply_result", None)
+            active = getattr(ProductionHandler, "_apply_thread_active", False)
+            if res is not None:
+                status = "finished"
+                payload = {"status": status, "success": res.get("success"), "error": res.get("error")}
+            elif active:
+                payload = {"status": "in-progress"}
+            else:
+                payload = {"status": "idle"}
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps(payload).encode("utf-8"))
             return
 
         # Rollback via pip is intentionally not exposed: pip only upgrades to the

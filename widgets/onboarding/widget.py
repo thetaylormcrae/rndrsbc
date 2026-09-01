@@ -14,17 +14,51 @@ from widgets.base import BaseWidget, register_widget
 
 
 def _claim_url():
+    """Build the claim URL from the persisted onboarding state.
+
+    Reads the claim token directly so the QR widget keeps working even when
+    the ``server`` package isn't importable from the widget's sys.path (the
+    fragile import-then-fallback path previously returned a useless
+    ``http://rndrsbc.local`` placeholder, which rendered a QR that could not
+    actually claim the device).
+    """
     try:
-        import sys
-        sys_here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        if sys_here not in sys.path:
-            sys.path.insert(0, sys_here)
         from server.onboarding import claim_url_for_token, onboarding_state
         state = onboarding_state()
         token = state.get("token")
         return claim_url_for_token(token), state
     except Exception:
-        return "http://rndrsbc.local", {}
+        # Robust local fallback: read .claim_token like server.onboarding does.
+        import glob
+        candidates = [
+            os.path.join(os.path.expanduser("~/.rndrsbc"), ".claim_token"),
+            "/home/pi/.rndrsbc/.claim_token",
+            "/home/logiadmin/.rndrsbc/.claim_token",
+            "/var/lib/rndrsbc/.claim_token",
+        ]
+        token = ""
+        for c in candidates:
+            if os.path.isfile(c):
+                try:
+                    with open(c) as fh:
+                        token = fh.read().strip()
+                except Exception:
+                    pass
+                if token:
+                    break
+        if not token:
+            # Last-ditch: scan for any .claim_token under the home dir.
+            for c in glob.glob(os.path.expanduser("~/.rndrsbc/**/.claim_token"), recursive=True):
+                try:
+                    with open(c) as fh:
+                        token = fh.read().strip()
+                except Exception:
+                    pass
+                if token:
+                    break
+        from urllib.parse import urlencode
+        claim_url = f"https://app.rool.cloud/claim?token={token}" if token else "http://rndrsbc.local"
+        return claim_url, {"token": token, "ap_active": False}
 
 
 @register_widget("onboarding", "Device Setup & QR Claim")
@@ -44,11 +78,9 @@ class OnboardingWidget(BaseWidget):
 
     def render(self, dimensions: tuple[int, int], settings: dict, bounds: Rect = None) -> Image.Image:
         try:
-            import qrcode
+            import qrcode  # declared hard dep: qrcode[pil]>=7.4.0 in pyproject (no lazy pip)
         except ImportError:
-            import subprocess
-            subprocess.run(["pip", "install", "qrcode"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            import qrcode
+            raise RuntimeError("qrcode is required for the onboarding widget (pip install 'qrcode[pil]')")
 
         url, state = _claim_url()
         token = state.get("token", "")

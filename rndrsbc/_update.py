@@ -34,11 +34,31 @@ def _pip(*args: str) -> int:
     return subprocess.call([*base, *args])
 
 
-def _available_version(reg_url: str | None = None) -> str | None:
-    """Ask the registry feed for the newest published engine version."""
+def _available_version_pypi(timeout: int = 8) -> str | None:
+    """Ask the PyPI JSON API for the newest published engine version.
+
+    PyPI is the single source of truth for the engine's own releases (the
+    same registry `pip install` uses), so it is always current and needs no
+    separate feed to be kept in sync. Returns None if unreachable.
+    """
+    import urllib.request
+    try:
+        req = urllib.request.Request(
+            "https://pypi.org/pypi/rndrsbc/json",
+            headers={"User-Agent": "rndrsbc-self-update/" + _current_version()},
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            info = json.load(r).get("info") or {}
+        ver = info.get("version")
+        return str(ver) if ver else None
+    except Exception:  # noqa: BLE001 - offline / unreachable
+        return None
+
+
+def _available_version_feed(reg_url: str | None = None) -> str | None:
+    """Fallback: ask the registry feed for the newest published engine version."""
     from core import registry
     try:
-        # Interactive update check: force a refresh so it reflects newly-published releases.
         feed = registry.fetch_catalog(reg_url, refresh=True)
         eng = next((e for e in feed.get("engine", []) if e.get("package") == "rndrsbc"), None)
         if eng and eng.get("version"):
@@ -48,14 +68,26 @@ def _available_version(reg_url: str | None = None) -> str | None:
         return None
 
 
+def _available_version(reg_url: str | None = None) -> str | None:
+    """Return the newest published engine version.
+
+    PyPI is authoritative and current; the registry feed is used only as a
+    fallback when PyPI is unreachable.
+    """
+    v = _available_version_pypi()
+    if v is not None:
+        return v
+    return _available_version_feed(reg_url)
+
+
 def status(quiet: bool = False) -> dict:
     """Return a machine-readable status dict (single source for CLI + dashboard).
 
     Keys:
       current_version  installed engine version (core.__version__)
-      latest_version   newest published version from the registry feed, or None
+      latest_version   newest published version (PyPI JSON API, then registry feed), or None
       update_available True when latest > current
-      error            set when the registry feed could not be reached
+      error            set when PyPI and the registry feed could not be reached
     """
     cur = _current_version()
     avail = _available_version()
@@ -66,7 +98,7 @@ def status(quiet: bool = False) -> dict:
         "error": None,
     }
     if avail is None:
-        out["error"] = "could not query feed — offline?"
+        out["error"] = "could not query update feed — offline?"
         if not quiet:
             print(f"rndrsbc {cur} ({out['error']})")
     return out

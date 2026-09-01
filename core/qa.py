@@ -11,9 +11,12 @@ from __future__ import annotations
 import importlib
 import inspect
 import json
+import logging
 import os
 
 from core import paths
+
+logger = logging.getLogger("rndrSBC.qa")
 
 
 def load_qa_config(path=None):
@@ -40,7 +43,12 @@ def resolve_display(cfg: dict):
     Raises ValueError/LookupError with a clear message when unusable.
     """
     disp_cfg = cfg.get("display", {}) or {}
-    driver = (disp_cfg.get("driver") or "virtual").replace("driver_", "")
+    # Hardware-first: when no driver is declared (missing/partial config
+    # section, a self-healed or freshly-regenerated config), default to ``auto``
+    # so a real panel attached to the Pi is still driven. A bare ``virtual``
+    # default silently abandons the physical display -- see the loud fallback
+    # warning below.
+    driver = (disp_cfg.get("driver") or "auto").replace("driver_", "")
     orientation = disp_cfg.get("orientation", disp_cfg.get("rotation", 0))
     saturation = float(disp_cfg.get("saturation", 0.5))
     saturation = max(0.1, min(1.0, saturation))
@@ -50,11 +58,20 @@ def resolve_display(cfg: dict):
         from displays.inky import InkyDisplay
         detected = InkyDisplay.detect()
         if detected is not None:
+            logger.info("[Display] auto-detected Inky panel '%s'", detected)
             return InkyDisplay(model=detected, orientation=orientation, saturation=saturation)
         fallback_model = disp_cfg.get("model", "impression_7_3")
         try_display = InkyDisplay(model=fallback_model, orientation=orientation, saturation=saturation)
         if try_display._inky is not None:
+            logger.info("[Display] attached Inky panel via explicit model '%s'", fallback_model)
             return try_display
+        logger.warning(
+            "[Display] NO physical panel detected (auto probe failed, model '%s' "
+            "had no hardware). Falling back to VIRTUAL display -- the e-paper will "
+            "NOT update. Check SPI/I2C and that 'inky' + RPi.GPIO are installed "
+            "(rndrsbc[pi] extras), then set display.driver to 'auto' or 'inky'.",
+            fallback_model,
+        )
         from displays.virtual import VirtualDisplay
         return VirtualDisplay(
             width=disp_cfg.get("width", 800),

@@ -95,7 +95,10 @@ def validate_config(raw: Any, self_heal: bool = False) -> Tuple[Dict[str, Any], 
 def _default_for(key: str):
     """Safe value used to self-heal a missing required top-level key."""
     if key == "display":
-        return {"driver": "virtual", "model": "epd7in3f", "orientation": 0}
+        # Hardware-first, matching main.py's default and bootstrap's intent
+        # (driver=auto). A virtual default silently abandons the physical
+        # e-paper, so a self-healed config must resolve toward the real panel.
+        return {"driver": "auto", "model": "impression_7_3", "orientation": 0}
     if key == "active_playlist":
         return "setup"
     if key == "playlists":

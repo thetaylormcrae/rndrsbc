@@ -614,6 +614,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         hideLoginModal();
         await checkAuthStatus();
         await loadStatus();
+        // Re-fetch the auth-gated panels now that we have a session.
+        await Promise.allSettled([loadTelemetry(), loadPhotos(), checkUpdate()]);
       } else {
         err.textContent = "Invalid administrator password.";
         err.classList.remove('hidden');

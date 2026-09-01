@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.11.0 (2026-09-01)
+
+### Features
+
+- **dashboard**: Add saving animations to config-save operations
+  ([`1fa1447`](https://github.com/thetaylormcrae/rndrsbc/commit/1fa144733a3711ae255e630c058766798930027f))
+
+
 ## v0.10.4 (2026-09-01)
 
 ### Bug Fixes

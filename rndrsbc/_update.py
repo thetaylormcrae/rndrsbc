@@ -97,10 +97,28 @@ def apply(dry_run: bool = False) -> int:
         print(f"[dry-run] would run: {sys.executable} -m pip install --upgrade rndrsbc")
         return 0
 
-    rc = _pip("install", "--upgrade", "rndrsbc")
+    # --no-cache-dir: pip's HTTP index cache can serve stale metadata ("0.10.0 is
+    # newest") right after a release lands, so the feed says 0.10.1 exists but pip
+    # says "Requirement already satisfied". Bypass the cache so the version check
+    # always hits PyPI fresh.
+    rc = _pip("install", "--upgrade", "--no-cache-dir", "rndrsbc")
     if rc != 0:
         print("update failed", file=sys.stderr)
         return rc
+
+    # Verify the install actually moved: an upgrade that "succeeded" but left the
+    # old version behind (e.g. stale index metadata after a fresh release) is a
+    # silent no-op that looks like success. Be loud when it happens.
+    after = _current_version()
+    if avail and after < avail:
+        print(
+            f"warning: still on {after}, wanted {avail} — pip resolved the index but\n"
+            "did not pick up the new release. This is usually PyPI CDN propagation\n"
+            "lag right after publish. Retry in a minute, or force it with:\n"
+            f"  {sys.executable} -m pip install --force-reinstall --no-cache-dir rndrsbc",
+            file=sys.stderr,
+        )
+        return 1
 
     # post-upgrade: refresh vendored deps + any migrations
     print("post-update bootstrap…")

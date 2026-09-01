@@ -48,13 +48,35 @@ def _available_version(reg_url: str | None = None) -> str | None:
         return None
 
 
-def check(quiet: bool = False) -> int:
-    """Return an exit code: 0 = up to date, 1 = update available, 2 = unknown."""
+def status(quiet: bool = False) -> dict:
+    """Return a machine-readable status dict (single source for CLI + dashboard).
+
+    Keys:
+      current_version  installed engine version (core.__version__)
+      latest_version   newest published version from the registry feed, or None
+      update_available True when latest > current
+      error            set when the registry feed could not be reached
+    """
     cur = _current_version()
     avail = _available_version()
+    out = {
+        "current_version": cur,
+        "latest_version": avail,
+        "update_available": bool(avail) and avail > cur,
+        "error": None,
+    }
     if avail is None:
+        out["error"] = "could not query feed — offline?"
         if not quiet:
-            print(f"rndrsbc {cur} (could not query feed — offline?)")
+            print(f"rndrsbc {cur} ({out['error']})")
+    return out
+
+
+def check(quiet: bool = False) -> int:
+    """Return an exit code: 0 = up to date, 1 = update available, 2 = unknown."""
+    st = status(quiet=quiet)
+    cur, avail = st["current_version"], st["latest_version"]
+    if avail is None:
         return 2
     if avail > cur:
         if not quiet:

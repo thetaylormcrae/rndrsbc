@@ -1539,9 +1539,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       try {
         const r = await fetch('/api/update/check');
         const u = await r.json();
-        document.getElementById('update-content').innerHTML = u.update_available
-          ? `<div class="text-emerald-400">Update available: v${u.latest_version}</div><div class="text-slate-500 mt-1">${u.changelog || ''}</div>`
-          : `<div class="text-slate-300">You're on the latest version (v${u.current_version})</div>`;
+        document.getElementById('update-content').innerHTML = u.error
+          ? `<div class="text-amber-400">Could not check for updates: ${u.error}</div>`
+          : u.update_available
+            ? `<div class="text-emerald-400">Update available: v${u.latest_version}</div>`
+            : `<div class="text-slate-300">You're on the latest version (v${u.current_version})</div>`;
       } catch (e) { document.getElementById('update-content').innerHTML = '<div>Auth required</div>'; }
     }
 
@@ -1770,11 +1772,14 @@ class ProductionHandler(QuietHandler):
                 self.end_headers()
                 self.wfile.write(b'{"error":"Authentication required"}')
                 return
-            from core.updates import check_for_update
+            # Single source of truth: the PyPI/pip path (_update.py). GitHub
+            # archive OTA is intentionally not used -- pip is the one upgrade
+            # mechanism, identical from the web dashboard and the CLI.
+            from rndrsbc import _update
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
-            self.wfile.write(json.dumps(check_for_update()).encode("utf-8"))
+            self.wfile.write(json.dumps(_update.status(quiet=True)).encode("utf-8"))
             return
 
         # 1d. Uploaded photos list (protected)
@@ -2371,29 +2376,24 @@ class ProductionHandler(QuietHandler):
 
         # 6. OTA Self-Update
         if parsed.path == "/api/update/apply":
-            from core.updates import download_and_stage_update, apply_staged_update
-            staged = download_and_stage_update()
-            if not staged.get("success"):
-                self.send_response(500)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps(staged).encode("utf-8"))
-                return
-            result = apply_staged_update(staged.get("staged_dir"))
-            self.send_response(200 if result.get("success") else 500)
+            # Same pip process as the CLI (`rndrsbc update self`):
+            #   python -m pip install --upgrade rndrsbc  then post-upgrade bootstrap.
+            from rndrsbc import _update
+            try:
+                rc = _update.apply()
+                result = {"success": rc == 0, "error": None if rc == 0 else "pip upgrade exited %d" % rc}
+            except Exception as exc:  # noqa: BLE001
+                result = {"success": False, "error": str(exc)}
+            self.send_response(200 if result["success"] else 500)
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps(result).encode("utf-8"))
             return
 
-        if parsed.path == "/api/update/rollback":
-            from core.updates import rollback_update
-            result = rollback_update()
-            self.send_response(200 if result.get("success") else 500)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(result).encode("utf-8"))
-            return
+        # Rollback via pip is intentionally not exposed: pip only upgrades to the
+        # latest release, so there is no GitHub-archive snapshot to restore. Use
+        # the CLI against an explicitly pinned older release if a downgrade is
+        # ever needed. GitHub OTA rollback was removed -- single pip process.
 
         # 7. Photo upload (multipart/form-data)
         if parsed.path == "/api/photos/upload" and self.headers.get("Content-Type", "").startswith("multipart/form-data"):

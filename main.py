@@ -22,7 +22,7 @@ import logging
 # Make deps importable regardless of how the entrypoint is invoked (must run
 # before any third-party import below). Anchors the package to its own root.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from core.paths import bootstrap_deps, resolve, CONFIG_PATH, CLAIM_TOKEN_PATH, ensure_data_dir, create_venv, ROOT
+from core.paths import bootstrap_deps, resolve, CONFIG_PATH, CLAIM_TOKEN_PATH, ensure_data_dir, create_venv, ROOT, DATA_DIR
 bootstrap_deps()
 
 # Ensure the relocatable data dir exists so photo uploads / config writes work
@@ -31,6 +31,51 @@ ensure_data_dir()
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("rndrSBC")
+
+
+def _configure_logging() -> None:
+    """Install a durable, rotating file handler alongside the console handler.
+
+    The default ``basicConfig`` StreamHandler is bound to ``sys.stderr`` at
+    import time, and ``--daemon`` redirects stderr to ``/dev/null`` during
+    daemonization. That used to mean every log line (HTTP requests, telemetry,
+    exceptions, scheduler ticks) silently vanished the moment the service ran
+    in the background - making production faults impossible to diagnose.
+
+    Here we add a RotatingFileHandler to ``<data>/logs/rndrSBC.log`` so logs
+    survive daemon mode and are bounded in size (5 MB x 3 backups). In
+    foreground mode the console handler stays active as well.
+    """
+    root = logging.getLogger()
+    # Allow operators to turn up verbosity without touching code:
+    #   RNDRSBC_LOG_LEVEL=DEBUG python3 main.py
+    _level_name = os.environ.get("RNDRSBC_LOG_LEVEL", "INFO").upper()
+    base = getattr(logging, _level_name, logging.INFO)
+
+    def _attach(handler: logging.Handler) -> bool:
+        handler.setLevel(base)
+        handler.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+        # Avoid double-attach if a previous process left the handler in place
+        # (rare, but harmless to guard).
+        for existing in root.handlers:
+            if isinstance(existing, type(handler)) and getattr(existing, "baseFilename", "") == getattr(handler, "baseFilename", ""):
+                return False
+        root.addHandler(handler)
+        return True
+
+    try:
+        from logging.handlers import RotatingFileHandler
+        log_dir = os.path.join(DATA_DIR, "logs")
+        os.makedirs(log_dir, exist_ok=True)
+        fh = RotatingFileHandler(
+            os.path.join(log_dir, "rndrSBC.log"),
+            maxBytes=5 * 1024 * 1024,
+            backupCount=3,
+            encoding="utf-8",
+        )
+        _attach(fh)
+    except Exception as e:
+        logger.warning("Could not attach file log handler: %s", e)
 
 from displays.virtual import VirtualDisplay
 from widgets.base import discover_widgets, WIDGET_REGISTRY
@@ -140,6 +185,12 @@ def _daemonize():
 
 def main():
     print_banner()
+
+    # Install the durable rotating log handler first (before any daemonize
+    # redirect of stderr to /dev/null), so background-mode logs persist to
+    # <data>/logs/rndrSBC.log instead of being discarded.
+    _configure_logging()
+    logger.info("rndrSBC starting (log file: %s)", os.path.join(DATA_DIR, "logs", "rndrSBC.log"))
 
     # 0. Auto-discover all installed widget plugins
     discover_widgets()

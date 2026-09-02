@@ -92,15 +92,39 @@ def _resolve_album_path(album: str) -> str:
     return album_dir
 
 
+_ALLOWED_PHOTO_EXTS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp"}
+
+
 def save_photo(data: bytes, filename: str, album: str = "default") -> str:
     """Saves an uploaded photo to gallery ``album`` (default: the root library).
 
     After persisting, the album cursor is primed so the freshly-uploaded photo
     is the NEXT one put on the panel (on the next render), instead of being
     skipped because the sequential cursor kept advancing past it.
+
+    Rejects payloads that are not real images (extension must be a known photo
+    type AND the bytes must decode as an image) so arbitrary files can never
+    be dropped into the photo library.
     """
     album_dir = _resolve_album_path(album)
     safe_name = os.path.basename(filename).replace(" ", "_")
+    # Hard extension whitelist first: never accept a client-supplied name whose
+    # suffix is not a recognised image type (no .html/.py/.sh/whatever).
+    _ext = os.path.splitext(safe_name)[1].lower()
+    if _ext not in _ALLOWED_PHOTO_EXTS:
+        raise ValueError(f"File type not allowed: {_ext or 'none'} (use JPG/PNG/WebP/GIF/BMP)")
+    # Validate the bytes are actually an image BEFORE committing to disk (and
+    # before picking a dedup name), so a non-image payload is rejected outright
+    # instead of being left on disk as an arbitrary file.
+    try:
+        from PIL import Image as _Img
+        import io as _io
+        _verify = _Img.open(_io.BytesIO(data))
+        _verify.verify()
+        _verify.close()
+    except Exception as e:
+        raise ValueError(f"Uploaded data is not a valid image: {e}")
+
     # Avoid clobbering an existing file of the same name with a later upload.
     fpath = os.path.join(album_dir, safe_name)
     n = 1

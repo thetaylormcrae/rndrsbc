@@ -1596,7 +1596,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         const t = await r.json();
         const el = document.getElementById('telemetry-content');
         if (!r.ok || t.error) {
-          el.innerHTML = `<div class="text-amber-400">Sign in to view device health${t.error ? ' (' + t.error + ')' : ''}</div>`;
+          el.innerHTML = `<div class="text-amber-400">Sign in to view device health${t.detail ? ' (HTTP ' + r.status + ': ' + t.detail + ')' : (t.error ? ' (' + t.error + ')' : (r.ok ? '' : ' (HTTP ' + r.status + ')'))}</div>`;
           return;
         }
         const health = t.health === 'healthy' ? 'text-emerald-400' : 'text-rose-400';
@@ -1607,7 +1607,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           `<div>Renders: ${t.render_count ?? '—'} · Errors: ${t.error_count ?? '—'}</div>` +
           `<div>Last render: ${t.last_render_duration_ms != null ? t.last_render_duration_ms + 'ms' : '—'}</div>` +
           (t.last_error ? `<div class="text-rose-400">⚠ ${t.last_error}</div>` : '');
-      } catch (e) { document.getElementById('telemetry-content').innerHTML = '<div class="text-amber-400">Monitoring unavailable</div>'; }
+      } catch (e) { document.getElementById('telemetry-content').innerHTML = '<div class="text-amber-400">Monitoring unavailable: ' + (e && e.message ? e.message : 'network error') + '</div>'; }
     }
 
     async function checkUpdate() {
@@ -1847,6 +1847,19 @@ class ProductionHandler(QuietHandler):
             return False
         return True
 
+    def _send_json(self, status: int, payload: dict) -> None:
+        """Send a JSON response with a consistent Content-Type/no-cache header."""
+        body = json.dumps(payload).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        try:
+            self.wfile.write(body)
+        except (BrokenPipeError, ConnectionResetError):
+            logger.debug("Client disconnected before JSON response was fully sent")
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         
@@ -1862,11 +1875,14 @@ class ProductionHandler(QuietHandler):
         if parsed.path == "/api/telemetry":
             if not self._require_auth():
                 return
-            from core.telemetry import TELEMETRY
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps(TELEMETRY.get_status()).encode("utf-8"))
+            try:
+                from core.telemetry import TELEMETRY
+                status = TELEMETRY.get_status()
+            except Exception as exc:
+                logger.exception("Telemetry status call failed")
+                self._send_json(500, {"error": "telemetry-unavailable", "detail": str(exc)})
+                return
+            self._send_json(200, status)
             return
 
         # 1c. OTA update check (protected)
@@ -1889,16 +1905,10 @@ class ProductionHandler(QuietHandler):
                 return
             try:
                 from widgets.photo_frame.widget import list_photos
-                photos = list_photos()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"photos": photos}).encode("utf-8"))
+                self._send_json(200, {"photos": list_photos()})
             except Exception as e:
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps({"photos": [], "error": str(e)}).encode("utf-8"))
+                logger.exception("list_photos failed")
+                self._send_json(200, {"photos": [], "error": str(e)})
             return
 
         # 1d-bis. Serve a photo file for thumbnails/preview (protected)

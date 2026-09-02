@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.11.1 (2026-09-02)
+
+### Bug Fixes
+
+- Durable production logging and telemetry hardening
+  ([`153c990`](https://github.com/thetaylormcrae/rndrsbc/commit/153c990ee1e023bc017b44cbc5cdc85d54393791))
+
+
 ## v0.11.0 (2026-09-01)
 
 ### Features

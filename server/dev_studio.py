@@ -14,15 +14,56 @@ import urllib.parse
 from PIL import Image
 
 # Import core and registry
+import logging
 from core.canvas import ResponsiveCanvas
 from core.color import quantize_image
-from widgets.weather.widget import WeatherWidget
-from widgets.system_stats.widget import SystemStatsWidget
+from core.paths import DATA_DIR
+from widgets.base import discover_widgets
 
-WIDGETS = {
-    "weather": WeatherWidget(),
-    "system_stats": SystemStatsWidget()
-}
+logger = logging.getLogger("rndrSBC.dev_studio")
+_root = logging.getLogger()
+if not any(getattr(h, "baseFilename", "") for h in _root.handlers):
+    _base = getattr(logging, os.environ.get("RNDRSBC_LOG_LEVEL", "INFO").upper(), logging.INFO)
+    _sh = logging.StreamHandler(); _sh.setLevel(_base)
+    _sh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+    _root.addHandler(_sh)
+    try:
+        from logging.handlers import RotatingFileHandler
+        _log_dir = os.path.join(DATA_DIR, "logs")
+        os.makedirs(_log_dir, exist_ok=True)
+        _fh = RotatingFileHandler(
+            os.path.join(_log_dir, "rndrSBC.log"),
+            maxBytes=5 * 1024 * 1024, backupCount=3, encoding="utf-8")
+        _fh.setLevel(_base)
+        _fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+        _root.addHandler(_fh)
+    except Exception as e:
+        logger.warning("Could not attach studio file log handler: %s", e)
+
+# Discover ALL bundled + community widget plugins (not a hardcoded subset) so the
+# studio previews every loadable widget, including ones dropped into plugins/.
+# Instances come from the @register_widget registry.
+WIDGETS = discover_widgets()
+if not WIDGETS:
+    logger.warning("Widget discovery returned an empty registry; studio has nothing to preview.")
+
+# Default widget for the initial render (not hardcoded to a module import).
+DEFAULT_WIDGET = next(iter(WIDGETS)) if WIDGETS else None
+
+# Build the widget <option> list for the studio selector from the live registry,
+# so newly-added and community widgets appear automatically (fallback name → name).
+def _build_widget_options():
+    def _label(key):
+        inst = WIDGETS.get(key)
+        return getattr(inst, "name", None) or key
+    rows = []
+    for key in sorted(WIDGETS):
+        selected = " selected" if key == DEFAULT_WIDGET else ""
+        label = _label(key)
+        rows.append(f'        <option value="{key}"{selected}>{label}</option>')
+    return "\n".join(rows) if rows else '        <option value="">No widgets discovered</option>'
+
+WIDGET_OPTIONS = _build_widget_options()
 
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en" class="dark">
@@ -94,8 +135,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div>
         <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Active Widget</label>
         <select id="widget-select" onchange="onWidgetChange()" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-orange-500">
-          <option value="weather">Weather Dashboard</option>
-          <option value="system_stats">System Monitor</option>
+          <!-- Populated server-side from the widget registry -->
+          {WIDGET_OPTIONS}
         </select>
       </div>
 
@@ -288,7 +329,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             </select>
           </div>
         `;
-      } else {
+      } else if (widget === 'system_stats') {
         form.innerHTML = `
           <div>
             <label class="block text-xs text-slate-400 mb-1">Device Label</label>
@@ -301,6 +342,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               <option value="Rectangle">Rectangle</option>
               <option value="None">None</option>
             </select>
+          </div>
+        `;
+      } else {
+        // Generic fallback for any plugin widget not explicitly modeled below.
+        // Renders with default settings via the /render endpoint.
+        form.innerHTML = `
+          <div class="text-xs text-slate-400 leading-relaxed rounded-lg bg-slate-800/40 border border-slate-700 p-3">
+            This widget is auto-discovered from the plugin registry. It renders with its
+            default settings. Fine-grained per-field editing is not modeled in this build of
+            the studio yet.
           </div>
         `;
       }
@@ -356,14 +407,26 @@ class DevStudioHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", "text/html")
             self.end_headers()
-            self.wfile.write(HTML_TEMPLATE.encode("utf-8"))
+            self.wfile.write(HTML_TEMPLATE.replace("{WIDGET_OPTIONS}", WIDGET_OPTIONS).encode("utf-8"))
             return
 
         if parsed.path == "/render":
             query = urllib.parse.parse_qs(parsed.query)
-            w = int(query.get("w", [800])[0])
-            h = int(query.get("h", [480])[0])
-            widget_name = query.get("widget", ["weather"])[0]
+
+            # Clamp canvas dimensions to the hardware-safe range. Without a bound a
+            # request like ?w=999999 forces a huge ResponsiveCanvas then a
+            # quantize/PNG encode - a memory/CPU DoS reachable without auth.
+            def _clamp_dim(name: str, default: int):
+                raw = query.get(name, [str(default)])[0]
+                try:
+                    return max(16, min(1600, int(raw)))
+                except (TypeError, ValueError):
+                    logger.warning("Non-integer %s=%r; using default %d", name, raw, default)
+                    return default
+            w = _clamp_dim("w", 800)
+            h = _clamp_dim("h", 480)
+
+            widget_name = query.get("widget", [DEFAULT_WIDGET or ""])[0]
             color_mode = query.get("color", ["7color"])[0]
             use_dither = query.get("dither", ["0"])[0] == "1"
 
@@ -373,10 +436,20 @@ class DevStudioHandler(BaseHTTPRequestHandler):
                 if k not in ["w", "h", "widget", "color", "dither", "t"]:
                     settings[k] = v[0]
 
-            widget = WIDGETS.get(widget_name, WIDGETS["weather"])
-            
+            widget = WIDGETS.get(widget_name)
+            if widget is None:
+                self.send_response(400)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                self.wfile.write(
+                    f"Unknown widget: {widget_name!r}. Known: {', '.join(sorted(WIDGETS))}".encode("utf-8"))
+                return
+
             try:
                 img = widget.render((w, h), settings)
+                if color_mode not in ("rgb", "7color", "bwr", "bw"):
+                    logger.warning("Unknown color_mode=%r; falling back to 7color", color_mode)
+                    color_mode = "7color"
                 if color_mode != "rgb":
                     img = quantize_image(img, color_mode=color_mode, dither=use_dither, snap_white=True)
 
@@ -392,6 +465,7 @@ class DevStudioHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(data)
             except Exception as e:
+                logger.exception("Studio render failed for widget=%r dims=(%d,%d)", widget_name, w, h)
                 self.send_response(500)
                 self.send_header("Content-Type", "text/plain")
                 self.end_headers()

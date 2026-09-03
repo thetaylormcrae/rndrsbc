@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.11.2 (2026-09-03)
+
+### Bug Fixes
+
+- Harden developer studio for production
+  ([`73b0c39`](https://github.com/thetaylormcrae/rndrsbc/commit/73b0c39237401c1be1b015af6132bf8df2898230))
+
+
 ## v0.11.1 (2026-09-02)
 
 ### Bug Fixes

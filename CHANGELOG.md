@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.12.0 (2026-09-04)
+
+### Features
+
+- **dev-studio**: Expose authenticated widget render in admin panel
+  ([`9af216f`](https://github.com/thetaylormcrae/rndrsbc/commit/9af216f4ad5b62575ca7e23986d2aebbe1830143))
+
+
 ## v0.11.2 (2026-09-03)
 
 ### Bug Fixes

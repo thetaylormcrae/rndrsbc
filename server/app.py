@@ -2073,7 +2073,57 @@ class ProductionHandler(QuietHandler):
             self.wfile.write(body)
             return
 
-        # 5. Live Screen Mirror
+        # 5. Dev Studio widget preview (authenticated). Reuses the same render
+        # pipeline as server/dev_studio.py so panel + studio can't drift.
+        if parsed.path == "/api/dev-studio/render":
+            if not self._require_auth():
+                return
+            qs = urllib.parse.parse_qs(parsed.query)
+
+            def _clamp_dim(name: str, default: int):
+                raw = qs.get(name, [str(default)])[0]
+                try:
+                    return max(16, min(1600, int(raw)))
+                except (TypeError, ValueError):
+                    return default
+
+            w = _clamp_dim("w", 800)
+            h = _clamp_dim("h", 480)
+            widget_name = qs.get("widget", [""])[0]
+            color_mode = qs.get("color", ["7color"])[0]
+            use_dither = qs.get("dither", ["0"])[0] == "1"
+
+            settings = {}
+            for k, v in qs.items():
+                if k not in ["w", "h", "widget", "color", "dither", "t"]:
+                    settings[k] = v[0]
+
+            from server.dev_studio import render_widget_image, WIDGETS
+            data, err = render_widget_image(widget_name, w, h,
+                                            color_mode=color_mode,
+                                            use_dither=use_dither,
+                                            settings=settings)
+            if data is not None:
+                self.send_response(200)
+                self.send_header("Content-Type", "image/png")
+                self.send_header("Content-Length", str(len(data)))
+                self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+                self.wfile.write(data)
+            else:
+                if WIDGETS.get(widget_name) is None:
+                    self.send_response(400)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": err}).encode("utf-8"))
+                else:
+                    self.send_response(500)
+                    self.send_header("Content-Type", "application/json")
+                    self.end_headers()
+                    self.wfile.write(json.dumps({"error": err}).encode("utf-8"))
+            return
+
+        # 6. Live Screen Mirror
         if parsed.path == "/api/screen.png":
             if not self._require_auth():
                 return

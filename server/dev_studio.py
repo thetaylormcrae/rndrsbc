@@ -65,6 +65,45 @@ def _build_widget_options():
 
 WIDGET_OPTIONS = _build_widget_options()
 
+
+# --- Reusable render pipeline -------------------------------------------------
+# Shared by the standalone studio handler (below) and the authenticated panel
+# endpoint in server/app.py, so there is exactly one render + safety path for
+# all studio previews.
+
+
+def render_widget_image(widget_name: str, w: int, h: int,
+                        color_mode: str = "7color", use_dither: bool = False,
+                        settings: dict = None):
+    """Render a widget to a PNG byte string.
+
+    Safely clamps dimensions, validates the widget, whitelists color modes, and
+    quantizes non-rgb output. Returns (png_bytes, error_or_None).
+    """
+    settings = settings or {}
+    widget = WIDGETS.get(widget_name)
+    if widget is None:
+        known = ", ".join(sorted(WIDGETS)) or "none"
+        return None, f"Unknown widget: {widget_name!r}. Known: {known}"
+
+    # Clamp to the hardware-safe range (mirrors the handler's DoS guard).
+    w = max(16, min(1600, int(w)))
+    h = max(16, min(1600, int(h)))
+
+    color_mode = color_mode if color_mode in ("rgb", "7color", "bwr", "bw") else "7color"
+    try:
+        img = widget.render((w, h), settings)
+        if color_mode != "rgb":
+            img = quantize_image(img, color_mode=color_mode, dither=use_dither, snap_white=True)
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        buf.seek(0)
+        return buf.getvalue(), None
+    except Exception as e:
+        logger.exception("Render failed for widget=%r dims=(%d,%d) color=%s",
+                         widget_name, w, h, color_mode)
+        return None, str(e)
+
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
@@ -430,46 +469,34 @@ class DevStudioHandler(BaseHTTPRequestHandler):
             color_mode = query.get("color", ["7color"])[0]
             use_dither = query.get("dither", ["0"])[0] == "1"
 
-            # Build settings
+            # Build settings (everything except the reserved render params).
             settings = {}
             for k, v in query.items():
                 if k not in ["w", "h", "widget", "color", "dither", "t"]:
                     settings[k] = v[0]
 
-            widget = WIDGETS.get(widget_name)
-            if widget is None:
-                self.send_response(400)
-                self.send_header("Content-Type", "text/plain")
-                self.end_headers()
-                self.wfile.write(
-                    f"Unknown widget: {widget_name!r}. Known: {', '.join(sorted(WIDGETS))}".encode("utf-8"))
-                return
-
-            try:
-                img = widget.render((w, h), settings)
-                if color_mode not in ("rgb", "7color", "bwr", "bw"):
-                    logger.warning("Unknown color_mode=%r; falling back to 7color", color_mode)
-                    color_mode = "7color"
-                if color_mode != "rgb":
-                    img = quantize_image(img, color_mode=color_mode, dither=use_dither, snap_white=True)
-
-                buf = io.BytesIO()
-                img.save(buf, format="PNG")
-                buf.seek(0)
-                data = buf.getvalue()
-
+            data, err = render_widget_image(
+                widget_name, w, h,
+                color_mode=color_mode, use_dither=use_dither, settings=settings)
+            if data is not None:
                 self.send_response(200)
                 self.send_header("Content-Type", "image/png")
                 self.send_header("Content-Length", str(len(data)))
                 self.send_header("Cache-Control", "no-cache")
                 self.end_headers()
                 self.wfile.write(data)
-            except Exception as e:
-                logger.exception("Studio render failed for widget=%r dims=(%d,%d)", widget_name, w, h)
-                self.send_response(500)
-                self.send_header("Content-Type", "text/plain")
-                self.end_headers()
-                self.wfile.write(f"Render failed: {e}".encode("utf-8"))
+            else:
+                # "Unknown widget" vs "render failure" need distinct statuses.
+                if WIDGETS.get(widget_name) is None:
+                    self.send_response(400)
+                    self.send_header("Content-Type", "text/plain")
+                    self.end_headers()
+                    self.wfile.write(err.encode("utf-8"))
+                else:
+                    self.send_response(500)
+                    self.send_header("Content-Type", "text/plain")
+                    self.end_headers()
+                    self.wfile.write(f"Render failed: {err}".encode("utf-8"))
             return
 
         self.send_response(404)

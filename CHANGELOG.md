@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.15.0 (2026-09-05)
+
+### Features
+
+- **weather**: Upgrade weather widget to InkyPi-style panelized e-ink layout
+  ([`53af228`](https://github.com/thetaylormcrae/rndrsbc/commit/53af228bc689141736dfa594876ff8d216092b45))
+
+
 ## v0.14.0 (2026-09-05)
 
 ### Features

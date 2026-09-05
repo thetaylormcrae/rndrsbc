@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.14.0 (2026-09-05)
+
+### Features
+
+- **admin**: Split dashboard into focused section tabs
+  ([`0d4fc9c`](https://github.com/thetaylormcrae/rndrsbc/commit/0d4fc9cf626bda4394b7921ce69ed955e2fe3622))
+
+
 ## v0.13.0 (2026-09-05)
 
 ### Features

@@ -610,26 +610,37 @@ class WeatherWidget(BaseWidget):
         unit_sym = UNITS[units]["temp"]
         wind_unit = UNITS[units]["wind"]
 
-        # Left: icon + temp + feels like + high/low. Right: 4x2 metrics grid without boxes
-        icon_box, temp_box, metrics_box = box.split_columns([2.5, 3.2, 4.3], gap=canvas.pt(8))
+        # Panelized: hero conditions (left) + grouped metrics (right), separated by a
+        # vertical rule. Strong whitespace over floating text for e-ink legibility.
+        pad = canvas.pt(6)
+        inner = box.inset(pad)
+        hero, metrics_box = inner.split_columns([3.4, 6.6], gap=canvas.pt(12))
 
-        # Icon on left
-        cur_icon_path = resolve_icon(cur["icon"])
-        if not cur_icon_path:
-            cur_icon_path = resolve_icon("01d.png")
+        # --- Left: big icon, current temp, condition text, high/low ---
+        cur_icon_path = resolve_icon(cur["icon"]) or resolve_icon("01d.png")
+        icon_area, temp_area = hero.split_rows([1.0, 1.15], gap=canvas.pt(2))
         if cur_icon_path:
-            canvas.paste_icon(cur_icon_path, icon_box.inset(canvas.pt(4)))
+            canvas.paste_icon(cur_icon_path, icon_area, size_pt=int(icon_area.h * 0.82))
 
-        # Temp in middle
-        font_big = canvas.get_font("Roboto-Bold", 46, font_weight="bold")
-        font_meta = canvas.get_font("Roboto-Regular", 14)
-        canvas.draw_text(f"{cur['temperature']}{unit_sym}", (temp_box.x, temp_box.y + canvas.pt(8)), font=font_big, fill="#000000")
-        canvas.draw_text(f"{i18n.label(lang, 'feels_like')} {cur['feels_like']}°", (temp_box.x, temp_box.y + canvas.pt(56)), font=font_meta, fill="#000000")
-        canvas.draw_text(f"{cur['high']}° / {cur['low']}°", (temp_box.x, temp_box.y + canvas.pt(78)), font=font_meta, fill="#000000")
+        font_big = canvas.get_font("Roboto-Bold", 44, font_weight="bold")
+        font_cond = canvas.get_font("Roboto-Bold", 14, font_weight="bold")
+        font_hi = canvas.get_font("Roboto-Regular", 13)
+        temp_label = cur.get("title") or cur.get("condition") or ""
+        canvas.draw_text(f"{cur['temperature']}{unit_sym}", (temp_area.x, temp_area.y + canvas.pt(2)), font=font_big, fill="#000000")
+        offset_y = canvas.pt(50)
+        if temp_label:
+            canvas.draw_text(temp_label, (temp_area.x, temp_area.y + offset_y), font=font_cond, fill="#333333")
+            offset_y += canvas.pt(20)
+        canvas.draw_text(
+            f"H {cur['high']}°   L {cur['low']}°", (temp_area.x, temp_area.y + offset_y), font=font_hi, fill="#000000")
 
-        # Metrics 4x2 grid (no box borders, clean text)
+        # Vertical rule separating hero from metrics panel
+        rule_x = hero.right + canvas.pt(5)
+        canvas.draw.line([(rule_x, inner.y), (rule_x, inner.bottom)], fill="#dddddd", width=canvas.pt(2))
+
+        # --- Right: grouped 2x4 metrics grid with columns headers (no dense boxes) ---
         if display_metrics:
-            pts = [
+            metrics = [
                 ("Sunrise", f"{self._fmt_hms(cur['sunrise'], settings.get('time_format', '12h'))}", "sunrise.png"),
                 ("Sunset", f"{self._fmt_hms(cur['sunset'], settings.get('time_format', '12h'))}", "sunset.png"),
                 (i18n.label(lang, "wind"), f"{cur['wind']} {wind_unit} {cur['wind_arrow']}", "wind.png"),
@@ -639,40 +650,52 @@ class WeatherWidget(BaseWidget):
                 ("Visibility", f"{cur['visibility']} {UNITS[units]['dist']}", "visibility.png"),
                 ("Air Quality", f"{cur['aqi']}", "aqi.png"),
             ]
-            m_rows = metrics_box.split_rows([1, 1, 1, 1], gap=canvas.pt(2))
+            m_rows = metrics_box.split_rows([1, 1, 1, 1], gap=canvas.pt(6))
             m_idx = 0
             font_lbl = canvas.get_font("Roboto-Regular", 11)
             font_val = canvas.get_font("Roboto-Bold", 12, font_weight="bold")
             for row in m_rows:
-                cols = row.split_columns([1, 1], gap=canvas.pt(4))
+                cols = row.split_columns([1, 1], gap=canvas.pt(6))
                 for col in cols:
-                    if m_idx < len(pts):
-                        lbl, val, ico_name = pts[m_idx]
-                        ico_sub, txt_sub = col.split_columns([2.2, 7.8], gap=canvas.pt(2))
-                        ico_p = resolve_icon(ico_name)
-                        if ico_p:
-                            canvas.paste_icon(ico_p, ico_sub.inset(canvas.pt(2)), size_pt=14)
-                        canvas.draw_text(lbl, (txt_sub.x, txt_sub.y), font=font_lbl, fill="#555555")
-                        canvas.draw_text(val, (txt_sub.x, txt_sub.y + canvas.pt(12)), font=font_val, fill="#000000")
-                        m_idx += 1
+                    if m_idx >= len(metrics):
+                        continue
+                    lbl, val, ico_name = metrics[m_idx]
+                    ico_sub, txt_sub = col.split_columns([1.8, 8.2], gap=canvas.pt(3))
+                    ico_p = resolve_icon(ico_name)
+                    if ico_p:
+                        canvas.paste_icon(ico_p, ico_sub.inset(canvas.pt(2)), size_pt=15)
+                    canvas.draw_text(lbl, (txt_sub.x, txt_sub.y), font=font_lbl, fill="#777777")
+                    canvas.draw_text(val, (txt_sub.x, txt_sub.y + canvas.pt(13)), font=font_val, fill="#000000")
+                    m_idx += 1
+
+    def _panel_label(self, canvas, box, text):
+        """Draws a small uppercase panel header tag at the top-left of a box."""
+        font = canvas.get_font("Roboto-Bold", 12, font_weight="bold")
+        canvas.draw_text(text.upper(), (box.x, box.y + canvas.pt(2)), font=font, fill="#555555")
 
     def _draw_graph(self, canvas, box, hourly, units, time_format, icon_step, display_rain=False, display_icons=False):
         if not hourly:
             return
+        # Panelize the graph inside a delineated card with a header label and padding.
+        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#c9c9c9", width=1)
+        inner = box.inset(canvas.pt(10))
+        pad_top = canvas.pt(22)
+        self._panel_label(canvas, inner, i18n_label := "Hourly Forecast")
+        chart = Rect(inner.x, inner.y + pad_top, inner.w, inner.h - pad_top)
         temps = [h["temp"] for h in hourly]
         min_t, max_t = min(temps), max(temps)
         t_range = max_t - min_t if max_t != min_t else 1.0
-        chart_w = box.w - canvas.pt(60) # leave room for axis labels
-        chart_h = box.h - canvas.pt(44)
-        start_x = box.x + canvas.pt(35)
-        start_y = box.y + canvas.pt(16)
+        chart_w = chart.w - canvas.pt(60) # leave room for axis labels
+        chart_h = chart.h - canvas.pt(36)
+        start_x = chart.x + canvas.pt(35)
+        start_y = chart.y + canvas.pt(10)
         step_x = chart_w / (len(temps) - 1) if len(temps) > 1 else chart_w
         coords = [(start_x + i * step_x, start_y + chart_h - ((t - min_t) / t_range) * (chart_h - canvas.pt(12))) for i, t in enumerate(temps)]
 
         # Min/Max temp labels on left axis
         font_axis = canvas.get_font("Roboto-Regular", 11)
-        canvas.draw_text(f"{int(round(max_t))}°", (box.x + canvas.pt(30), start_y), font=font_axis, fill="#000000", anchor="rm")
-        canvas.draw_text(f"{int(round(min_t))}°", (box.x + canvas.pt(30), start_y + chart_h), font=font_axis, fill="#000000", anchor="rm")
+        canvas.draw_text(f"{int(round(max_t))}°", (chart.x + canvas.pt(30), start_y), font=font_axis, fill="#000000", anchor="rm")
+        canvas.draw_text(f"{int(round(min_t))}°", (chart.x + canvas.pt(30), start_y + chart_h), font=font_axis, fill="#000000", anchor="rm")
 
         # 0% / 100% precip labels on right axis
         right_x = start_x + chart_w + canvas.pt(5)
@@ -702,25 +725,31 @@ class WeatherWidget(BaseWidget):
         for i, h in enumerate(hourly):
             px = coords[i][0]
             if i % 3 == 0:
-                canvas.draw_text(self._fmt_hour(h["time"], time_format), (px, box.bottom - canvas.pt(4)), font=font_t, fill="#000000", anchor="mb")
+                canvas.draw_text(self._fmt_hour(h["time"], time_format), (px, chart.bottom - canvas.pt(2)), font=font_t, fill="#000000", anchor="mb")
             # hourly condition icons, gated by both display flag and step
             if display_icons and icon_step and i % icon_step == 0:
                 ico_path = resolve_icon(h.get("icon"))
                 if ico_path:
-                    canvas.paste_icon(ico_path, Rect(px - canvas.pt(9), start_y + chart_h - canvas.pt(24), canvas.pt(18), canvas.pt(18)), size_pt=16)
+                    canvas.paste_icon(ico_path, Rect(px - canvas.pt(9), start_y + chart_h - canvas.pt(26), canvas.pt(18), canvas.pt(18)), size_pt=16)
 
     def _draw_forecast(self, canvas, box, forecast, units, moon_phase, lat, forecast_days=7):
         days_map = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
         n = min(forecast_days, len(forecast), 7)
         if n <= 0:
             return
-        f_cols = box.split_columns([1] * n, gap=canvas.pt(6))
+        # Panelize the forecast inside a delineated card with a header label.
+        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#c9c9c9", width=1)
+        inner = box.inset(canvas.pt(6))
+        pad_top = canvas.pt(24)
+        self._panel_label(canvas, inner, "Forecast")
+        tiles = Rect(inner.x, inner.y + pad_top, inner.w, inner.h - pad_top)
+        f_cols = tiles.split_columns([1] * n, gap=canvas.pt(8))
         font_f_day = canvas.get_font("Roboto-Bold", 13, font_weight="bold")
         font_f_tmp = canvas.get_font("Roboto-Regular", 12)
         for i in range(n):
             f = forecast[i]
             col = f_cols[i]
-            canvas.draw_card(col, radius=8, fill="#ffffff", outline="#000000", width=1)
+            canvas.draw_card(col, radius=8, fill="#f7f7f7", outline="#000000", width=1)
             d_inner = col.inset(canvas.pt(4))
             if moon_phase:
                 d_rows = d_inner.split_rows([1.0, 1.6, 1.2, 1.0], gap=canvas.pt(2))

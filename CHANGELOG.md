@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.15.1 (2026-09-05)
+
+### Bug Fixes
+
+- **server**: Add no-store caching, Content-Length, and persistent admin sessions
+  ([`95b17fb`](https://github.com/thetaylormcrae/rndrsbc/commit/95b17fb842496bd7ae2cd4881664a90c48623413))
+
+
 ## v0.15.0 (2026-09-05)
 
 ### Features

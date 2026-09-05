@@ -119,11 +119,19 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     </div>
   </header>
 
+  <!-- Section Navigator -->
+  <div id="section-tabs" class="sticky top-[64px] z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-2 flex gap-1 overflow-x-auto">
+    <button data-rtab="playlist" onclick="showTab('playlist')" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🎛️ Playlist Config</button>
+    <button data-rtab="widgets" onclick="showTab('widgets')" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🧩 Widget Finder</button>
+    <button data-rtab="photos" onclick="showTab('photos')" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🖼️ Photo Management</button>
+    <button data-rtab="backup" onclick="showTab('backup')" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">💾 Backup & Update</button>
+  </div>
+
   <!-- Main Container -->
   <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
 
     <!-- Top Row: Screen Mirror + Quick Stats -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div data-tab="playlist" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
       
       <!-- Live Display Mirror -->
       <div class="lg:col-span-7 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
@@ -150,7 +158,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </div>
 
       <!-- Playlists Management -->
-      <div class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+      <div data-tab="playlist" class="lg:col-span-5 bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col justify-between">
         <div class="space-y-4">
           <div class="flex items-center justify-between">
             <h2 class="font-bold text-sm text-slate-200">Playlists & Rotation Schedules</h2>
@@ -193,7 +201,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     </div>
 
     <!-- Active Playlist Widgets Editor -->
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
+    <div data-tab="playlist" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
         <div>
           <h2 class="font-bold text-base text-slate-100 flex items-center gap-2">
@@ -291,7 +299,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     </div>
 
     <!-- Dev Studio: widget render preview (authenticated) -->
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+    <div data-tab="widgets" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
       <div class="flex items-center justify-between mb-4">
         <div>
           <h2 class="font-bold text-base text-slate-100">🧪 Dev Studio</h2>
@@ -353,8 +361,25 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- Widget Finder: catalogue of all discovered widgets -->
+    <div data-tab="widgets" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="font-bold text-base text-slate-100">🔎 Widget Finder</h2>
+          <p class="text-xs text-slate-400">Every widget discovered on this install, with its configuration schema</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <input id="wf-search" type="text" placeholder="Search widgets…" oninput="wfRender()" class="text-xs bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-slate-100 placeholder-slate-500">
+          <button onclick="wfLoad()" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition">↻ Refresh</button>
+        </div>
+      </div>
+      <div id="wf-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div class="text-xs text-slate-500">Loading widget catalogue…</div>
+      </div>
+    </div>
+
     <!-- Display Hardware & Quiet Hours Settings -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div data-tab="playlist" class="grid grid-cols-1 md:grid-cols-2 gap-6">
       
       <!-- Display Driver Settings -->
       <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
@@ -487,7 +512,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </div>
 
       <!-- Admin Security & Password Settings -->
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+      <div data-tab="backup" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
         <div>
           <h2 class="font-bold text-base text-slate-100">🔒 Admin Security & Password</h2>
           <p class="text-xs text-slate-400">Update your dashboard administrator password</p>
@@ -1597,7 +1622,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   </script>
   <!-- Device Telemetry, Appliance Administration, OTA Update & Photo Library Panels -->
   <div class="max-w-6xl mx-auto px-4 pb-10 pt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-    <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
+    <div data-tab="backup" class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
       <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">📡 Device Health</div>
       <div id="telemetry-content" class="text-[11px] text-slate-400 space-y-1">
         <div>Load monitoring…</div>
@@ -1605,7 +1630,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       <button onclick="loadTelemetry()" class="mt-2 text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Refresh</button>
     </div>
 
-    <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
+    <div data-tab="backup" class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
       <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">⚡ System & Power</div>
       <div class="space-y-1.5 pt-1">
         <button onclick="triggerPanelClean()" class="w-full text-left text-[11px] px-2.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/20 flex items-center justify-between">
@@ -1627,7 +1652,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </div>
     </div>
 
-    <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
+    <div data-tab="backup" class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
       <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">💾 Backup & Updates</div>
       <div id="update-content" class="text-[11px] text-slate-400 mb-2">Checking…</div>
       <div class="flex items-center space-x-1.5 mb-2.5">
@@ -1643,7 +1668,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </div>
     </div>
 
-    <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
+    <div data-tab="photos" class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
       <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">🖼️ Photo Library</div>
       <input type="file" id="photo-upload" accept="image/*" class="text-[10px] text-slate-400 mb-2 w-full" />
       <button id="btn-upload-photo" onclick="uploadPhoto()" class="text-[10px] px-2 py-1 rounded bg-pink-600/80 hover:bg-pink-500 text-white">Upload Photo</button>
@@ -1938,6 +1963,83 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         if (st) st.textContent = 'Network error';
       }
     }
+
+    // ---------- Section tabs ----------
+    const RTABS = ['playlist', 'widgets', 'photos', 'backup'];
+    function showTab(tab) {
+      RTABS.forEach(t => {
+        const show = (t === tab);
+        document.querySelectorAll('[data-tab="' + t + '"]').forEach(el => {
+          el.style.display = show ? '' : 'none';
+        });
+        const btn = document.querySelector('[data-rtab="' + t + '"]');
+        if (btn) {
+          btn.className = 'rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ' +
+            (show ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/30' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800');
+        }
+      });
+      window._activeTab = tab;
+    }
+
+    // ---------- Widget Finder catalogue ----------
+    let WF_WIDGETS = [];
+    async function wfLoad() {
+      const grid = document.getElementById('wf-grid');
+      if (!grid) return;
+      grid.innerHTML = '<div class="text-xs text-slate-500">Loading widget catalogue…</div>';
+      try {
+        const res = await fetch('/api/dev-studio/widgets');
+        if (!res.ok) {
+          grid.innerHTML = '<div class="text-xs text-rose-400">Failed to load catalogue</div>';
+          return;
+        }
+        const data = await res.json();
+        WF_WIDGETS = data.widgets || [];
+        wfRender();
+      } catch (e) {
+        grid.innerHTML = '<div class="text-xs text-rose-400">Network error</div>';
+      }
+    }
+
+    function wfRender() {
+      const grid = document.getElementById('wf-grid');
+      const q = (document.getElementById('wf-search').value || '').trim().toLowerCase();
+      if (!grid) return;
+      const list = WF_WIDGETS.filter(w => !q || w.name.toLowerCase().includes(q));
+      if (!list.length) {
+        grid.innerHTML = '<div class="text-xs text-slate-500 col-span-full">No widgets match “' + q + '”.</div>';
+        return;
+      }
+      grid.innerHTML = list.map(w => {
+        const fields = (w.schema && w.schema.fields) ? w.schema.fields : [];
+        const fieldList = fields.slice(0, 5).map(f =>
+          '<span class="inline-block text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">' + f.name +
+          '<span class="text-slate-500">:' + (f.type && f.type.kind || '?') + '</span></span>'
+        ).join(' ') + (fields.length > 5 ? ' <span class="text-[10px] text-slate-500">+' + (fields.length - 5) + ' more</span>' : '');
+        return '<div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">' +
+          '<div class="flex items-center justify-between mb-1">' +
+            '<div class="font-mono text-sm text-slate-100">' + w.name + '</div>' +
+            '<button onclick="dsSelectWidget(\'' + w.name + '\')" class="text-[11px] px-2 py-1 rounded bg-orange-600/20 hover:bg-orange-600/40 text-orange-300 border border-orange-600/40 font-semibold transition">Preview</button>' +
+          '</div>' +
+          '<div class="text-[11px] text-slate-500 mb-2">' + (fields.length ? fields.length + ' settings' : 'no settings') + '</div>' +
+          '<div class="flex flex-wrap gap-1">' + fieldList + '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    function dsSelectWidget(name) {
+      const sel = document.getElementById('ds-widget');
+      if (sel && sel.querySelector('option[value="' + name + '"]')) {
+        sel.value = name;
+        dsRebuildSettings();
+        showTab('widgets');
+        dsRender();
+      }
+    }
+
+    // Default to the Playlist Config tab; run finder + studio init.
+    wfLoad();
+    showTab('playlist');
 
     loadTelemetry();
     loadPhotos();

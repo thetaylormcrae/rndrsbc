@@ -290,6 +290,69 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </div>
     </div>
 
+    <!-- Dev Studio: widget render preview (authenticated) -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+      <div class="flex items-center justify-between mb-4">
+        <div>
+          <h2 class="font-bold text-base text-slate-100">🧪 Dev Studio</h2>
+          <p class="text-xs text-slate-400">Preview any discovered widget against your real panel dimensions</p>
+        </div>
+        <button id="btn-ds-refresh" onclick="devStudioRefresh()" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition">↻ Refresh</button>
+      </div>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <!-- Controls -->
+        <div class="lg:col-span-4 space-y-4">
+          <div>
+            <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Widget</label>
+            <select id="ds-widget" onchange="dsRebuildSettings(); dsRender();" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500/40">
+              <option value="">Loading catalogue…</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Width px</label>
+              <input id="ds-w" type="number" min="16" max="1600" value="800" onchange="dsRender()" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500/40">
+            </div>
+            <div>
+              <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Height px</label>
+              <input id="ds-h" type="number" min="16" max="1600" value="480" onchange="dsRender()" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500/40">
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Color mode</label>
+              <select id="ds-color" onchange="dsRender()" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500/40">
+                <option value="7color" selected>7-Color</option>
+                <option value="rgb">RGB</option>
+                <option value="bwr">BWR</option>
+                <option value="bw">B/W</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Dither</label>
+              <select id="ds-dither" onchange="dsRender()" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:ring-2 focus:ring-orange-500/40">
+                <option value="0" selected>Off</option>
+                <option value="1">On</option>
+              </select>
+            </div>
+          </div>
+          <div id="ds-settings"></div>
+          <div class="flex items-center gap-2 pt-1">
+            <button onclick="dsRender()" class="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold transition">▶ Render Preview</button>
+            <span id="ds-status" class="text-[11px] text-slate-400"></span>
+          </div>
+        </div>
+        <!-- Preview -->
+        <div class="lg:col-span-8 bg-slate-950/60 border border-slate-800 rounded-xl flex items-center justify-center min-h-[360px] p-4 overflow-auto">
+          <img id="ds-preview" alt="Widget preview" class="max-w-full max-h-[560px] object-contain rounded shadow-2xl ring-1 ring-slate-700/50" style="display:none">
+          <div id="ds-preview-empty" class="text-slate-500 text-xs text-center space-y-1">
+            <div class="text-3xl">🧪</div>
+            <div>Select a widget to render a preview.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Display Hardware & Quiet Hours Settings -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       
@@ -1765,9 +1828,121 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       }
     }
 
+    // ---------- Dev Studio ----------
+    let DS_SCHEMAS = {};
+
+    async function devStudioInit() {
+      try {
+        const res = await fetch('/api/dev-studio/widgets');
+        if (!res.ok) return;
+        const data = await res.json();
+        const sel = document.getElementById('ds-widget');
+        if (!sel) return;
+        sel.innerHTML = '';
+        (data.widgets || []).forEach(w => {
+          const o = document.createElement('option');
+          o.value = w.name;
+          o.textContent = w.name;
+          DS_SCHEMAS[w.name] = w.schema || [];
+          sel.appendChild(o);
+        });
+        dsRebuildSettings();
+        dsRender();
+      } catch (e) { /* quiet */ }
+    }
+
+    function devStudioRefresh() {
+      DS_SCHEMAS = {};
+      devStudioInit();
+    }
+
+    // Render a simple settings field from a widget schema entry (best-effort).
+    function _dsField(f) {
+      const kind = (f.type && f.type.kind) || 'string';
+      const id = 'ds_set_' + f.name;
+      if (kind === 'boolean') {
+        return '<label class="flex items-center justify-between text-xs text-slate-300"><span>' + f.name +
+               '</span><input id="' + id + '" type="checkbox" onclick="dsRender()" class="accent-orange-500"></label>';
+      }
+      if (kind === 'enum' && Array.isArray(f.type.values)) {
+        let opts = f.type.values.map(v => '<option value="' + v + '">' + v + '</option>').join('');
+        return '<label class="block text-xs text-slate-300"><span class="text-[11px] font-bold text-slate-400 uppercase">' + f.name +
+               '</span><select id="' + id + '" onchange="dsRender()" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-100">' + opts + '</select></label>';
+      }
+      return '<label class="block text-xs text-slate-300"><span class="text-[11px] font-bold text-slate-400 uppercase">' + f.name +
+             '</span><input id="' + id + '" type="text" oninput="dsDebounced()" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-100" placeholder="' + (f.name) + '"></label>';
+    }
+
+    let _dsDebounce = null;
+    function dsDebounced() {
+      clearTimeout(_dsDebounce);
+      _dsDebounce = setTimeout(dsRender, 400);
+    }
+
+    function dsRebuildSettings() {
+      const sel = document.getElementById('ds-widget');
+      const holder = document.getElementById('ds-settings');
+      const name = sel ? sel.value : '';
+      if (!holder) return;
+      holder.innerHTML = '';
+      const schema = DS_SCHEMAS[name] || [];
+      if (schema.length) {
+        const box = document.createElement('div');
+        box.className = 'space-y-2 border-t border-slate-800 pt-3 mt-1';
+        box.innerHTML = schema.map(_dsField).join('');
+        holder.appendChild(box);
+      }
+    }
+
+    async function dsRender() {
+      const st = document.getElementById('ds-status');
+      const img = document.getElementById('ds-preview');
+      const empty = document.getElementById('ds-preview-empty');
+      const sel = document.getElementById('ds-widget');
+      if (!sel || !sel.value) return;
+      const w = Math.max(16, Math.min(1600, parseInt(document.getElementById('ds-w').value || '800', 10) || 800));
+      const h = Math.max(16, Math.min(1600, parseInt(document.getElementById('ds-h').value || '480', 10) || 480));
+      const color = document.getElementById('ds-color').value;
+      const dither = document.getElementById('ds-dither').value;
+
+      // Collect settings fields.
+      const settings = {};
+      (DS_SCHEMAS[sel.value] || []).forEach(f => {
+        const el = document.getElementById('ds_set_' + f.name);
+        if (!el) return;
+        if (f.type && f.type.kind === 'boolean') settings[f.name] = el.checked;
+        else if (el.value !== undefined && el.value !== '') {
+          if (f.type && f.type.kind === 'number') settings[f.name] = Number(el.value);
+          else settings[f.name] = el.value;
+        }
+      });
+
+      if (st) st.textContent = 'Rendering…';
+      const params = new URLSearchParams({ w, h, widget: sel.value, color, dither, settings: JSON.stringify(settings) });
+      try {
+        const res = await fetch('/api/dev-studio/render?' + params.toString());
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          if (st) st.textContent = (d.error || 'Render failed');
+          if (img) img.style.display = 'none';
+          if (empty) empty.style.display = '';
+          return;
+        }
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        img.src = url;
+        img.style.display = '';
+        if (empty) empty.style.display = 'none';
+        if (st) st.textContent = w + '×' + h + ' · ' + color;
+      } catch (e) {
+        if (st) st.textContent = 'Network error';
+      }
+    }
+
     loadTelemetry();
     loadPhotos();
     checkUpdate();
+    devStudioInit();
   </script>
 </body>
 </html>
@@ -2095,8 +2270,17 @@ class ProductionHandler(QuietHandler):
 
             settings = {}
             for k, v in qs.items():
-                if k not in ["w", "h", "widget", "color", "dither", "t"]:
+                if k not in ["w", "h", "widget", "color", "dither", "t", "settings"]:
                     settings[k] = v[0]
+            # settings may arrive as a JSON-encoded blob from the panel preview.
+            raw_settings = qs.get("settings", [None])[0]
+            if raw_settings is not None:
+                try:
+                    blob = json.loads(raw_settings)
+                    if isinstance(blob, dict):
+                        settings.update(blob)
+                except (ValueError, TypeError):
+                    pass
 
             from server.dev_studio import render_widget_image, WIDGETS
             data, err = render_widget_image(widget_name, w, h,
@@ -2121,6 +2305,28 @@ class ProductionHandler(QuietHandler):
                     self.send_header("Content-Type", "application/json")
                     self.end_headers()
                     self.wfile.write(json.dumps({"error": err}).encode("utf-8"))
+            return
+
+        # 5b. Dev Studio widget catalogue (authenticated). Returns every
+        # discovered widget + a settings form skeleton for the panel preview.
+        if parsed.path == "/api/dev-studio/widgets":
+            if not self._require_auth():
+                return
+            from server.dev_studio import WIDGETS
+            out = []
+            for name in sorted(WIDGETS.keys()):
+                w = WIDGETS[name]
+                schema = []
+                try:
+                    schema = w.get_config_schema() or []
+                except Exception:
+                    schema = []
+                out.append({"name": name, "schema": schema})
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(json.dumps({"widgets": out}).encode("utf-8"))
             return
 
         # 6. Live Screen Mirror

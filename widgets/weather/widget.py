@@ -471,6 +471,8 @@ class WeatherWidget(BaseWidget):
                  "options": ["OpenMeteo", "OpenWeatherMap"], "default": "OpenMeteo"},
                 {"name": "units", "label": "Units", "type": "select",
                  "options": ["imperial", "metric", "standard"], "default": "imperial"},
+                {"name": "layout", "label": "Layout", "type": "select",
+                 "options": ["quadrant", "rows"], "default": "quadrant"},
                 {"name": "displayRefreshTime", "label": "Show Refresh Time", "type": "boolean", "default": True},
                 {"name": "displayMetrics", "label": "Show Metrics (humidity, wind, etc.)", "type": "boolean", "default": True},
                 {"name": "displayGraph", "label": "Show Hourly Graph", "type": "boolean", "default": True},
@@ -553,8 +555,38 @@ class WeatherWidget(BaseWidget):
             cur = data["current"]
 
             # ---- Layout ----
+            layout_style = str(settings.get("layout", "quadrant")).lower()
             use_forecast = display_forecast and data.get("forecast")
             use_graph = display_graph
+
+            if layout_style == "quadrant":
+                # 4-Quadrant Grid matching the reference dashboard sketch:
+                #   Top-Left    Weather Details (sunrise/sunset, wind, humidity, pressure, UV, visibility, AQI)
+                #   Bottom-Left Current Temp     (hero icon + big temperature + condition + H/L)
+                #   Top-Right   3-day Forecast   (Mon/Tue/Wed columns)
+                #   Bottom-Right Rolling Temp    (hourly temperature curve)
+                h_box, grid_box = content.split_rows([1.0, 9.0], gap=canvas.pt(8))
+                self._draw_header(canvas, h_box, title, data["date_label"], time_format, lang, is_stale=is_stale, display_refresh_time=display_refresh_time, timezone=timezone, weather_time_zone=weather_time_zone)
+
+                left_col, right_col = grid_box.split_columns([1.0, 1.0], gap=canvas.pt(8))
+                details_box, current_box = left_col.split_rows([1.0, 1.05], gap=canvas.pt(8))
+                forecast_box, graph_box = right_col.split_rows([1.0, 1.2], gap=canvas.pt(8))
+
+                self._draw_quadrant_details(canvas, details_box, cur, units, settings, lang)
+                self._draw_quadrant_current(canvas, current_box, cur, units, lang)
+                if use_forecast:
+                    if "forecast_count" in data:
+                        forecast_days = min(forecast_days, int(data["forecast_count"]))
+                    self._draw_forecast(canvas, forecast_box, data["forecast"], units, moon_phase, lat, forecast_days=min(3, forecast_days))
+                if use_graph:
+                    self._draw_graph(canvas, graph_box, data["hourly"], units, time_format, graph_icon_step, display_rain=display_rain, display_icons=display_graph_icons)
+
+                if bounds is None:
+                    canvas.draw_frame(frame_style, color="#000000")
+
+                return canvas.to_image()
+
+            # ---- Legacy row-stacked layout ----
             if use_forecast:
                 # ensure forecast days is bounded to what we actually have
                 if "forecast_count" in data:
@@ -667,6 +699,67 @@ class WeatherWidget(BaseWidget):
                     canvas.draw_text(lbl, (txt_sub.x, txt_sub.y), font=font_lbl, fill="#777777")
                     canvas.draw_text(val, (txt_sub.x, txt_sub.y + canvas.pt(13)), font=font_val, fill="#000000")
                     m_idx += 1
+
+    def _draw_quadrant_details(self, canvas, box, cur, units, settings, lang):
+        """Top-Left quadrant: Weather Details card (sunrise/sunset, wind, humidity,
+        pressure, UV, visibility, AQI) laid out as a clean 2-column metric grid."""
+        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#c9c9c9", width=1)
+        inner = box.inset(canvas.pt(8))
+        pad_top = canvas.pt(24)
+        self._panel_label(canvas, inner, "Weather Details")
+        metrics = [
+            ("Sunrise", f"{self._fmt_hms(cur['sunrise'], settings.get('time_format', '12h'))}", "sunrise.png"),
+            ("Sunset", f"{self._fmt_hms(cur['sunset'], settings.get('time_format', '12h'))}", "sunset.png"),
+            (i18n.label(lang, "wind"), f"{cur['wind']} {UNITS[units]['wind']} {cur['wind_arrow']}", "wind.png"),
+            (i18n.label(lang, "humidity"), f"{cur['humidity']}%", "humidity.png"),
+            ("Pressure", f"{cur['pressure']} hPa", "pressure.png"),
+            ("UV Index", f"{cur['uv']}", "uvi.png"),
+            ("Visibility", f"{cur['visibility']} {UNITS[units]['dist']}", "visibility.png"),
+            ("Air Quality", f"{cur['aqi']}", "aqi.png"),
+        ]
+        grid = Rect(inner.x, inner.y + pad_top, inner.w, inner.h - pad_top)
+        m_rows = grid.split_rows([1, 1, 1, 1], gap=canvas.pt(6))
+        m_idx = 0
+        font_lbl = canvas.get_font("Roboto-Regular", 10)
+        font_val = canvas.get_font("Roboto-Bold", 11, font_weight="bold")
+        for row in m_rows:
+            cols = row.split_columns([1, 1], gap=canvas.pt(6))
+            for col in cols:
+                if m_idx >= len(metrics):
+                    continue
+                lbl, val, ico_name = metrics[m_idx]
+                ico_sub, txt_sub = col.split_columns([1.6, 8.4], gap=canvas.pt(3))
+                ico_p = resolve_icon(ico_name)
+                if ico_p:
+                    canvas.paste_icon(ico_p, ico_sub.inset(canvas.pt(2)), size_pt=13)
+                canvas.draw_text(lbl, (txt_sub.x, txt_sub.y), font=font_lbl, fill="#777777")
+                canvas.draw_text(val, (txt_sub.x, txt_sub.y + canvas.pt(13)), font=font_val, fill="#000000")
+                m_idx += 1
+
+    def _draw_quadrant_current(self, canvas, box, cur, units, lang):
+        """Bottom-Left quadrant: Current Temp card (hero icon + big temperature +
+        condition description + high/low)."""
+        unit_sym = UNITS[units]["temp"]
+        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#c9c9c9", width=1)
+        inner = box.inset(canvas.pt(8))
+        pad_top = canvas.pt(24)
+        self._panel_label(canvas, inner, "Current Temp")
+        hero = Rect(inner.x, inner.y + pad_top, inner.w, inner.h - pad_top)
+        # Large icon on the left, big temperature + condition on the right, H/L below.
+        icon_area, temp_area = hero.split_columns([3.2, 6.8], gap=canvas.pt(8))
+        cur_icon_path = resolve_icon(cur["icon"]) or resolve_icon("01d.png")
+        if cur_icon_path:
+            canvas.paste_icon(cur_icon_path, icon_area.inset(canvas.pt(8)), size_pt=int(icon_area.h * 0.65))
+        font_big = canvas.get_font("Roboto-Bold", 40, font_weight="bold")
+        font_cond = canvas.get_font("Roboto-Regular", 15)
+        font_hi = canvas.get_font("Roboto-Regular", 13)
+        canvas.draw_text(f"{cur['temperature']}{unit_sym}", (temp_area.x, temp_area.y + canvas.pt(6)), font=font_big, fill="#000000")
+        cond = cur.get("title") or cur.get("condition") or ""
+        offset_y = canvas.pt(52)
+        if cond:
+            canvas.draw_text(cond, (temp_area.x, temp_area.y + offset_y), font=font_cond, fill="#333333")
+            offset_y += canvas.pt(20)
+        canvas.draw_text(f"H {cur['high']}°   L {cur['low']}°", (temp_area.x, temp_area.y + offset_y), font=font_hi, fill="#000000")
 
     def _panel_label(self, canvas, box, text):
         """Draws a small uppercase panel header tag at the top-left of a box."""

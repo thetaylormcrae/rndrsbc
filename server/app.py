@@ -1022,7 +1022,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       };
 
       if (widgetType === "weather") {
-        newWidget.settings = { location: "New York City", latitude: 40.7128, longitude: -74.0060, units: "imperial", frame: "None", weatherProvider: "OpenMeteo", displayGraph: true, moonPhase: true, graphIconStep: 3, time_format: "12h" };
+        newWidget.settings = { location: "New York City", latitude: 40.7128, longitude: -74.0060, units: "imperial", frame: "None", layout: "quadrant", weatherProvider: "OpenMeteo", displayGraph: true, moonPhase: true, graphIconStep: 3, time_format: "12h" };
       } else if (widgetType === "clock") {
         newWidget.settings = { style: "digital", time_format: "12h", show_date: true, frame: "None" };
       } else if (widgetType === "calendar") {

@@ -37,13 +37,57 @@ logger = logging.getLogger("rndrSBC.server")
 
 # In-memory active session tokens: {session_token: {"created_at": float, "user": "admin"}}
 ACTIVE_SESSIONS: dict[str, dict] = {}
+# Sessions are also persisted to CONFIG_PATH so a service restart does not
+# log every client out (otherwise stats / OTA / photos / dev-studio all 401
+# until a manual re-login).
+_SESSION_LOCK = threading.Lock()
 SESSION_TTL_SECS = 86400 * 7 # 7 days
+
+
+def _load_sessions(force: bool = False) -> None:
+    """Populate ACTIVE_SESSIONS from the persisted copy in CONFIG_PATH."""
+    if not force and ACTIVE_SESSIONS:
+        return
+    try:
+        if os.path.exists(CONFIG_PATH):
+            with open(CONFIG_PATH, "r") as f:
+                cfg = json.load(f)
+            saved = cfg.get("admin_sessions") or {}
+            now = time.time()
+            for tok, meta in saved.items():
+                if now - float(meta.get("created_at", 0)) < SESSION_TTL_SECS:
+                    ACTIVE_SESSIONS[tok] = meta
+    except Exception:
+        logger.debug("Could not load persisted admin sessions", exc_info=True)
+
+
+def _save_sessions() -> None:
+    """Persist ACTIVE_SESSIONS into CONFIG_PATH (best-effort, atomic)."""
+    try:
+        with _SESSION_LOCK:
+            cfg = {}
+            if os.path.exists(CONFIG_PATH):
+                with open(CONFIG_PATH, "r") as f:
+                    cfg = json.load(f)
+            cfg["admin_sessions"] = {
+                tok: m for tok, m in ACTIVE_SESSIONS.items()
+            }
+            tmp = CONFIG_PATH + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump(cfg, f, indent=2)
+            os.replace(tmp, CONFIG_PATH)
+    except Exception:
+        logger.debug("Could not persist admin sessions", exc_info=True)
+
 
 DASHBOARD_HTML = """<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>rndrSBC Management Portal</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -2096,6 +2140,7 @@ class ProductionHandler(QuietHandler):
                 return True
             else:
                 del ACTIVE_SESSIONS[token]
+                _save_sessions()
         return False
 
     def _has_admin_setup(self) -> bool:
@@ -2144,6 +2189,8 @@ class ProductionHandler(QuietHandler):
         if parsed.path in ["/", "/index.html"]:
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(DASHBOARD_HTML.encode("utf-8"))))
             self.end_headers()
             self.wfile.write(DASHBOARD_HTML.encode("utf-8"))
             return
@@ -2545,6 +2592,7 @@ class ProductionHandler(QuietHandler):
                 # Auto-login after setup
                 token = secrets.token_hex(32)
                 ACTIVE_SESSIONS[token] = {"created_at": time.time(), "user": "admin"}
+                _save_sessions()
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -2570,6 +2618,7 @@ class ProductionHandler(QuietHandler):
                 if pwd_hash and check_password_hash(pwd_hash, pwd):
                     token = secrets.token_hex(32)
                     ACTIVE_SESSIONS[token] = {"created_at": time.time(), "user": "admin"}
+                    _save_sessions()
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
                     self.send_header("Set-Cookie", f"rndrsbc_session={token}; Path=/; HttpOnly; SameSite=Lax")
@@ -2621,6 +2670,7 @@ class ProductionHandler(QuietHandler):
 
                 token = secrets.token_hex(32)
                 ACTIVE_SESSIONS[token] = {"created_at": time.time(), "user": "admin"}
+                _save_sessions()
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
@@ -2640,6 +2690,7 @@ class ProductionHandler(QuietHandler):
             token = self._get_cookie("rndrsbc_session")
             if token in ACTIVE_SESSIONS:
                 del ACTIVE_SESSIONS[token]
+                _save_sessions()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
             self.send_header("Set-Cookie", "rndrsbc_session=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT")
@@ -3036,4 +3087,6 @@ def run_production_server(scheduler, port=80):
         server = QuietServer(("0.0.0.0", actual_port), ProductionHandler)
 
     logger.info(f"Production Web Dashboard active at: http://localhost:{actual_port}")
+    # Rehydrate persisted admin sessions so a restart does not log clients out.
+    _load_sessions()
     server.serve_forever()

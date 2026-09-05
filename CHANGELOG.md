@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.13.0 (2026-09-05)
+
+### Features
+
+- **dev-studio**: Add render preview UI to admin panel
+  ([`a92467d`](https://github.com/thetaylormcrae/rndrsbc/commit/a92467d2e57ed8a1d417dc8f5d04c1a61fbdf05a))
+
+
 ## v0.12.0 (2026-09-04)
 
 ### Features

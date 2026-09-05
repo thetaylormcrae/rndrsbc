@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.16.0 (2026-09-05)
+
+### Features
+
+- Implement 4-quadrant weather dashboard layout matching user sketch
+  ([`c670c7c`](https://github.com/thetaylormcrae/rndrsbc/commit/c670c7c10de1c6b189a0ca5320d41229e8ebce47))
+
+
 ## v0.15.1 (2026-09-05)
 
 ### Bug Fixes

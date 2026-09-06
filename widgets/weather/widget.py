@@ -703,7 +703,7 @@ class WeatherWidget(BaseWidget):
     def _draw_quadrant_details(self, canvas, box, cur, units, settings, lang):
         """Top-Left quadrant: Weather Details card (sunrise/sunset, wind, humidity,
         pressure, UV, visibility, AQI) laid out as a clean 2-column metric grid."""
-        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#000000", width=1)
+        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#666666", width=2)
         inner = box.inset(canvas.pt(8))
         pad_top = canvas.pt(24)
         self._panel_label(canvas, inner, "Weather Details")
@@ -740,7 +740,7 @@ class WeatherWidget(BaseWidget):
         """Bottom-Left quadrant: Current Temp card (hero icon + big temperature +
         condition description + high/low)."""
         unit_sym = UNITS[units]["temp"]
-        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#000000", width=1)
+        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#666666", width=2)
         inner = box.inset(canvas.pt(8))
         pad_top = canvas.pt(24)
         self._panel_label(canvas, inner, "Current Temp")
@@ -770,7 +770,7 @@ class WeatherWidget(BaseWidget):
         if not hourly:
             return
         # Panelize the graph inside a delineated card with a header label and padding.
-        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#000000", width=1)
+        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#666666", width=2)
         inner = box.inset(canvas.pt(10))
         pad_top = canvas.pt(22)
         self._panel_label(canvas, inner, i18n_label := "Hourly Forecast")
@@ -831,7 +831,7 @@ class WeatherWidget(BaseWidget):
         if n <= 0:
             return
         # Panelize the forecast inside a delineated card with a header label.
-        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#000000", width=1)
+        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#666666", width=2)
         inner = box.inset(canvas.pt(6))
         pad_top = canvas.pt(24)
         self._panel_label(canvas, inner, "Forecast")
@@ -842,7 +842,7 @@ class WeatherWidget(BaseWidget):
         for i in range(n):
             f = forecast[i]
             col = f_cols[i]
-            canvas.draw_card(col, radius=8, fill="#ffffff", outline="#000000", width=1)
+            canvas.draw_card(col, radius=8, fill="#ffffff", outline="#666666", width=1)
             d_inner = col.inset(canvas.pt(4))
             if moon_phase:
                 d_rows = d_inner.split_rows([1.0, 1.6, 1.2, 1.0], gap=canvas.pt(2))

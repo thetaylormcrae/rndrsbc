@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.16.6 (2026-09-06)
+
+### Bug Fixes
+
+- **weather**: Default to full-width legacy layout, not 4-quadrant grid
+  ([`e488e60`](https://github.com/thetaylormcrae/rndrsbc/commit/e488e6060c3fe95c723973c3ba4d3de5e7b356c1))
+
+
 ## v0.16.5 (2026-09-06)
 
 ### Bug Fixes

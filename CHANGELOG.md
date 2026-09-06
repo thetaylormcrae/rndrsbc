@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v0.16.3 (2026-09-06)
+
+### Bug Fixes
+
+- **display**: Disable dithering (Dither.NONE) to eliminate grain and speckle
+  ([`1a3dba3`](https://github.com/thetaylormcrae/rndrsbc/commit/1a3dba3bb61722c1963ccfe4bab632ff20161268))
+
+- **update**: Read installed version via importlib.metadata so self-update verifies correctly
+  ([`ddc3d53`](https://github.com/thetaylormcrae/rndrsbc/commit/ddc3d533d359d27dfc61fc934b254c3c096ce939))
+
+
 ## v0.16.2 (2026-09-06)
 
 ### Bug Fixes

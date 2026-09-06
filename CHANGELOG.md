@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.16.7 (2026-09-06)
+
+### Bug Fixes
+
+- **weather**: Eliminate dither speckle by removing tinted card/chart fills
+  ([`ddecb06`](https://github.com/thetaylormcrae/rndrsbc/commit/ddecb061d234dcea92ed283871a241535cecf92b))
+
+
 ## v0.16.6 (2026-09-06)
 
 ### Bug Fixes

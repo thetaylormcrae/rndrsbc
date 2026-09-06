@@ -222,24 +222,16 @@ class InkyDisplay(BaseDisplay):
     ]
 
     def _quantize_primaries(self, image: Image.Image) -> Image.Image:
-        """Quantize an RGB canvas to the Spectra 6 primaries in P-mode with dithering.
+        """Quantize an RGB canvas to the Spectra 6 primaries in P-mode, Floyd-Steinberg dithered.
 
         Handing a 6-color P-mode image to Pimoroni's e673 set_image() makes it take the
         P-mode branch: it keeps our exact palette (no broken _palette_blend re-quantization)
         and skips dithering a second time. Output colors are therefore deterministic.
-
-        Floyd-Steinberg dithering offsets quantization loss: mid-tones in gradients and filled
-        areas are diffused across adjacent primaries, preserving visual depth so the panel does
-        not flatten or look washed out on flat white cards. Solid black text and icons land
-        exactly on the black primary, keeping them crisp.
-
-        Card outlines / thin elements in mid-gray are diffused into a light texture that reads
-        as an even edge rather than random speckle.
         """
         pal = Image.new("P", (1, 1))
         pal.putpalette([c for rgb in self.SPECTRA6_PRIMARIES for c in rgb])
         return image.convert("RGB").quantize(
-            colors=6, palette=pal, dither=Image.Dither.NONE
+            colors=6, palette=pal, dither=Image.Dither.FLOYDSTEINBERG
         )
 
     def update(self, canvas: Image.Image, dirty_rects: list = None):

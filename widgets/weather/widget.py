@@ -696,14 +696,14 @@ class WeatherWidget(BaseWidget):
                     ico_p = resolve_icon(ico_name)
                     if ico_p:
                         canvas.paste_icon(ico_p, ico_sub.inset(canvas.pt(2)), size_pt=15)
-                    canvas.draw_text(lbl, (txt_sub.x, txt_sub.y), font=font_lbl, fill="#777777")
+                    canvas.draw_text(lbl, (txt_sub.x, txt_sub.y), font=font_lbl, fill="#000000")
                     canvas.draw_text(val, (txt_sub.x, txt_sub.y + canvas.pt(13)), font=font_val, fill="#000000")
                     m_idx += 1
 
     def _draw_quadrant_details(self, canvas, box, cur, units, settings, lang):
         """Top-Left quadrant: Weather Details card (sunrise/sunset, wind, humidity,
         pressure, UV, visibility, AQI) laid out as a clean 2-column metric grid."""
-        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#c9c9c9", width=1)
+        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#000000", width=1)
         inner = box.inset(canvas.pt(8))
         pad_top = canvas.pt(24)
         self._panel_label(canvas, inner, "Weather Details")
@@ -718,29 +718,29 @@ class WeatherWidget(BaseWidget):
             ("Air Quality", f"{cur['aqi']}", "aqi.png"),
         ]
         grid = Rect(inner.x, inner.y + pad_top, inner.w, inner.h - pad_top)
-        m_rows = grid.split_rows([1, 1, 1, 1], gap=canvas.pt(6))
+        m_rows = grid.split_rows([1, 1, 1, 1], gap=canvas.pt(8))
         m_idx = 0
-        font_lbl = canvas.get_font("Roboto-Regular", 10)
-        font_val = canvas.get_font("Roboto-Bold", 11, font_weight="bold")
+        font_lbl = canvas.get_font("Roboto-Regular", 12)
+        font_val = canvas.get_font("Roboto-Bold", 13, font_weight="bold")
         for row in m_rows:
-            cols = row.split_columns([1, 1], gap=canvas.pt(6))
+            cols = row.split_columns([1, 1], gap=canvas.pt(8))
             for col in cols:
                 if m_idx >= len(metrics):
                     continue
                 lbl, val, ico_name = metrics[m_idx]
-                ico_sub, txt_sub = col.split_columns([1.6, 8.4], gap=canvas.pt(3))
+                ico_sub, txt_sub = col.split_columns([1.7, 8.3], gap=canvas.pt(4))
                 ico_p = resolve_icon(ico_name)
                 if ico_p:
-                    canvas.paste_icon(ico_p, ico_sub.inset(canvas.pt(2)), size_pt=13)
-                canvas.draw_text(lbl, (txt_sub.x, txt_sub.y), font=font_lbl, fill="#777777")
-                canvas.draw_text(val, (txt_sub.x, txt_sub.y + canvas.pt(13)), font=font_val, fill="#000000")
+                    canvas.paste_icon(ico_p, ico_sub.inset(canvas.pt(2)), size_pt=18)
+                canvas.draw_text(lbl, (txt_sub.x, txt_sub.y), font=font_lbl, fill="#000000")
+                canvas.draw_text(val, (txt_sub.x, txt_sub.y + canvas.pt(15)), font=font_val, fill="#000000")
                 m_idx += 1
 
     def _draw_quadrant_current(self, canvas, box, cur, units, lang):
         """Bottom-Left quadrant: Current Temp card (hero icon + big temperature +
         condition description + high/low)."""
         unit_sym = UNITS[units]["temp"]
-        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#c9c9c9", width=1)
+        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#000000", width=1)
         inner = box.inset(canvas.pt(8))
         pad_top = canvas.pt(24)
         self._panel_label(canvas, inner, "Current Temp")
@@ -764,13 +764,13 @@ class WeatherWidget(BaseWidget):
     def _panel_label(self, canvas, box, text):
         """Draws a small uppercase panel header tag at the top-left of a box."""
         font = canvas.get_font("Roboto-Bold", 12, font_weight="bold")
-        canvas.draw_text(text.upper(), (box.x, box.y + canvas.pt(2)), font=font, fill="#555555")
+        canvas.draw_text(text.upper(), (box.x, box.y + canvas.pt(2)), font=font, fill="#000000")
 
     def _draw_graph(self, canvas, box, hourly, units, time_format, icon_step, display_rain=False, display_icons=False):
         if not hourly:
             return
         # Panelize the graph inside a delineated card with a header label and padding.
-        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#c9c9c9", width=1)
+        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#000000", width=1)
         inner = box.inset(canvas.pt(10))
         pad_top = canvas.pt(22)
         self._panel_label(canvas, inner, i18n_label := "Hourly Forecast")
@@ -792,8 +792,8 @@ class WeatherWidget(BaseWidget):
 
         # 0% / 100% precip labels on right axis
         right_x = start_x + chart_w + canvas.pt(5)
-        canvas.draw_text("100%", (right_x, start_y), font=font_axis, fill="#666666", anchor="lm")
-        canvas.draw_text("0%", (right_x, start_y + chart_h), font=font_axis, fill="#666666", anchor="lm")
+        canvas.draw_text("100%", (right_x, start_y), font=font_axis, fill="#000000", anchor="lm")
+        canvas.draw_text("0%", (right_x, start_y + chart_h), font=font_axis, fill="#000000", anchor="lm")
 
         # Filled area under temperature line (gradient effect or warm fill)
         if len(coords) >= 2:
@@ -831,18 +831,18 @@ class WeatherWidget(BaseWidget):
         if n <= 0:
             return
         # Panelize the forecast inside a delineated card with a header label.
-        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#c9c9c9", width=1)
+        canvas.draw_card(box, radius=10, fill="#ffffff", outline="#000000", width=1)
         inner = box.inset(canvas.pt(6))
         pad_top = canvas.pt(24)
         self._panel_label(canvas, inner, "Forecast")
         tiles = Rect(inner.x, inner.y + pad_top, inner.w, inner.h - pad_top)
         f_cols = tiles.split_columns([1] * n, gap=canvas.pt(8))
         font_f_day = canvas.get_font("Roboto-Bold", 13, font_weight="bold")
-        font_f_tmp = canvas.get_font("Roboto-Regular", 12)
+        font_f_tmp = canvas.get_font("Roboto-Regular", 13)
         for i in range(n):
             f = forecast[i]
             col = f_cols[i]
-            canvas.draw_card(col, radius=8, fill="#f7f7f7", outline="#000000", width=1)
+            canvas.draw_card(col, radius=8, fill="#ffffff", outline="#000000", width=1)
             d_inner = col.inset(canvas.pt(4))
             if moon_phase:
                 d_rows = d_inner.split_rows([1.0, 1.6, 1.2, 1.0], gap=canvas.pt(2))
@@ -852,11 +852,11 @@ class WeatherWidget(BaseWidget):
             canvas.draw_text(days_map[_wday(f["day"])], (col.center[0], col.y + canvas.pt(6)), font=font_f_day, fill="#000000", anchor="mt")
             d_icon = resolve_icon(self._normalize_icon(f["icon"]))
             if d_icon:
-                canvas.paste_icon(d_icon, d_rows[1])
+                canvas.paste_icon(d_icon, d_rows[1], size_pt=28)
             if moon_phase:
                 m_icon = resolve_icon(f["moon_icon"])
                 if m_icon:
-                    canvas.paste_icon(m_icon, d_rows[2])
+                    canvas.paste_icon(m_icon, d_rows[2], size_pt=24)
             canvas.draw_text(f"{f['high']}° / {f['low']}°", (col.center[0], col.bottom - canvas.pt(6)), font=font_f_tmp, fill="#000000", anchor="mb")
 
     # ---- helpers ----

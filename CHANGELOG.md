@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.16.5 (2026-09-06)
+
+### Bug Fixes
+
+- **display**: Revert rendering layer to InkyPi/Pimoroni Spectra baseline
+  ([`eed6e84`](https://github.com/thetaylormcrae/rndrsbc/commit/eed6e84e0c6e67a6f7542d7a6a32a833b3d1768f))
+
+
 ## v0.16.4 (2026-09-06)
 
 ### Bug Fixes

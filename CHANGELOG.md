@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.16.2 (2026-09-06)
+
+### Bug Fixes
+
+- **weather**: Restore dither depth so dashboard is not washed out; use mid-gray editable card
+  outlines
+  ([`652e652`](https://github.com/thetaylormcrae/rndrsbc/commit/652e652712f8136bc69d66c6e34ad587aef9fa80))
+
+
 ## v0.16.1 (2026-09-06)
 
 ### Bug Fixes

@@ -795,10 +795,9 @@ class WeatherWidget(BaseWidget):
         canvas.draw_text("100%", (right_x, start_y), font=font_axis, fill="#666666", anchor="lm")
         canvas.draw_text("0%", (right_x, start_y + chart_h), font=font_axis, fill="#666666", anchor="lm")
 
-        # Filled area under temperature line (gradient effect or warm fill)
+        # Filled area under temperature line (removed to prevent dither speckle on e-ink)
         if len(coords) >= 2:
-            poly_points = [(coords[0][0], start_y + chart_h)] + coords + [(coords[-1][0], start_y + chart_h)]
-            canvas.draw.polygon(poly_points, fill="#ffe8bc")
+            pass
 
         # Rain bars (precipitation probability over time)
         if display_rain:
@@ -842,7 +841,7 @@ class WeatherWidget(BaseWidget):
         for i in range(n):
             f = forecast[i]
             col = f_cols[i]
-            canvas.draw_card(col, radius=8, fill="#f7f7f7", outline="#000000", width=1)
+            canvas.draw_card(col, radius=8, fill="#ffffff", outline="#000000", width=1)
             d_inner = col.inset(canvas.pt(4))
             if moon_phase:
                 d_rows = d_inner.split_rows([1.0, 1.6, 1.2, 1.0], gap=canvas.pt(2))

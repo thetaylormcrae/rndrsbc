@@ -472,7 +472,7 @@ class WeatherWidget(BaseWidget):
                 {"name": "units", "label": "Units", "type": "select",
                  "options": ["imperial", "metric", "standard"], "default": "imperial"},
                 {"name": "layout", "label": "Layout", "type": "select",
-                 "options": ["quadrant", "rows"], "default": "quadrant"},
+                 "options": ["quadrant", "rows"], "default": "rows"},
                 {"name": "displayRefreshTime", "label": "Show Refresh Time", "type": "boolean", "default": True},
                 {"name": "displayMetrics", "label": "Show Metrics (humidity, wind, etc.)", "type": "boolean", "default": True},
                 {"name": "displayGraph", "label": "Show Hourly Graph", "type": "boolean", "default": True},
@@ -555,7 +555,7 @@ class WeatherWidget(BaseWidget):
             cur = data["current"]
 
             # ---- Layout ----
-            layout_style = str(settings.get("layout", "quadrant")).lower()
+            layout_style = str(settings.get("layout", "rows")).lower()
             use_forecast = display_forecast and data.get("forecast")
             use_graph = display_graph
 

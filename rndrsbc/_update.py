@@ -23,8 +23,21 @@ from core import paths
 
 
 def _current_version() -> str:
-    import core
-    return getattr(core, "__version__", "0.0.0")
+    """Return the version actually installed on disk.
+
+    Uses importlib.metadata (reads the installed dist-info) rather than the
+    in-memory `core.__version__`. This matters in `apply()`: pip replaces the
+    package on disk, but if `core` was already imported, `core.__version__`
+    still reflects the previously-loaded module, so the post-upgrade verify
+    step would wrongly report "still on <old version>" on the first self-update
+    run. importlib.metadata always reflects what is really installed.
+    """
+    try:
+        from importlib import metadata
+        return metadata.version("rndrsbc")
+    except Exception:  # noqa: BLE001 - package not installed (dev checkout)
+        import core
+        return getattr(core, "__version__", "0.0.0")
 
 
 def _pip(*args: str) -> int:

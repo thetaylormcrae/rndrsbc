@@ -314,12 +314,48 @@ class ResponsiveCanvas:
             self.draw.rounded_rectangle(fill_rect, radius=r, fill=fill_color)
 
     def paste_icon(self, icon_path: str, rect: Rect, size_pt: int = None):
-        """Loads, scales, and centers an icon within a target bounding box with safe buffer disposal."""
+        """Loads, scales, and centers an icon with clean Spectra primary posterization and outline for e-ink visibility."""
         if not icon_path or not os.path.exists(icon_path):
             return
         try:
             with Image.open(icon_path) as raw_icon:
                 with raw_icon.convert("RGBA") as icon:
+                    import numpy as np
+                    from PIL import ImageFilter
+                    arr = np.array(icon)
+                    rgb = arr[:, :, :3].astype(np.float32)
+                    alpha = arr[:, :, 3]
+                    mask = alpha > 10
+                    if np.any(mask):
+                        spectra_rgb = np.array([
+                            [0, 0, 0],       # Black
+                            [255, 255, 255], # White
+                            [255, 255, 0],   # Yellow
+                            [255, 0, 0],     # Red
+                            [0, 0, 255],     # Blue
+                            [0, 255, 0],     # Green
+                        ], dtype=np.float32)
+                        
+                        # Nearest primary for body
+                        pixels = rgb[mask]
+                        dists = np.linalg.norm(pixels[:, np.newaxis, :] - spectra_rgb[np.newaxis, :, :], axis=2)
+                        nearest_idx = np.argmin(dists, axis=1)
+                        body_prim = spectra_rgb[nearest_idx]
+                        
+                        # Build output array
+                        out_arr = arr.astype(np.float32).copy()
+                        out_arr[:, :, :3] = 255.0  # default white background
+                        out_arr[mask, :3] = body_prim
+                        
+                        # Add crisp black outline for shape definition
+                        mask_img = Image.fromarray((alpha > 10).astype(np.uint8) * 255, "L")
+                        grown = mask_img.filter(ImageFilter.MaxFilter(5))
+                        om = (np.array(grown) > 128) & ~(alpha > 10)
+                        out_arr[om, :3] = 0.0  # Black outline
+                        out_arr[om, 3] = 255.0 # Opaque outline
+                        
+                        icon = Image.fromarray(out_arr.astype(np.uint8), "RGBA")
+
                     target_size = self.pt(size_pt) if size_pt else min(rect.w, rect.h)
                     if target_size <= 0: return
                     with icon.resize((target_size, target_size), Image.Resampling.LANCZOS) as resized:

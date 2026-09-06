@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.16.4 (2026-09-06)
+
+### Bug Fixes
+
+- **display**: Add crisp black outline and robust primary posterization to icons for e-ink
+  visibility
+  ([`7da2de0`](https://github.com/thetaylormcrae/rndrsbc/commit/7da2de017f21a53d3739b322064dbc91dcbb1dc4))
+
+
 ## v0.16.3 (2026-09-06)
 
 ### Bug Fixes

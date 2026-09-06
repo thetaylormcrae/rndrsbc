@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.16.1 (2026-09-06)
+
+### Bug Fixes
+
+- **weather**: Sharpen e-ink contrast, remove dither speckle, enlarge weather details & forecast
+  icons
+  ([`0a505ef`](https://github.com/thetaylormcrae/rndrsbc/commit/0a505eff29bfb6ed08dc07903a596f448255de2e))
+
+
 ## v0.16.0 (2026-09-05)
 
 ### Features

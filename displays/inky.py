@@ -239,7 +239,7 @@ class InkyDisplay(BaseDisplay):
         pal = Image.new("P", (1, 1))
         pal.putpalette([c for rgb in self.SPECTRA6_PRIMARIES for c in rgb])
         return image.convert("RGB").quantize(
-            colors=6, palette=pal, dither=Image.Dither.FLOYDSTEINBERG
+            colors=6, palette=pal, dither=Image.Dither.NONE
         )
 
     def update(self, canvas: Image.Image, dirty_rects: list = None):

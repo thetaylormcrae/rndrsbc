@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.17.0 (2026-09-07)
+
+### Features
+
+- **admin**: Split single-page dashboard into real hash-routed pages with auth unlocks
+  ([`65895b5`](https://github.com/thetaylormcrae/rndrsbc/commit/65895b5c6ad2444a02cf8cdaa9a0d18b3e056ea7))
+
+
 ## v0.16.7 (2026-09-06)
 
 ### Bug Fixes

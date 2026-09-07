@@ -165,10 +165,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
   <!-- Section Navigator -->
   <div id="section-tabs" class="sticky top-[64px] z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-2 flex gap-1 overflow-x-auto">
-    <button data-rtab="playlist" onclick="showTab('playlist')" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🎛️ Playlist Config</button>
-    <button data-rtab="widgets" onclick="showTab('widgets')" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🧩 Widget Finder</button>
-    <button data-rtab="photos" onclick="showTab('photos')" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🖼️ Photo Management</button>
-    <button data-rtab="backup" onclick="showTab('backup')" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">💾 Backup & Update</button>
+    <a data-page-nav="playlists" href="#/playlists" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🎛️ Playlists</a>
+    <a data-page-nav="widgets" href="#/widgets" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🧩 Widgets</a>
+    <a data-page-nav="photos" href="#/photos" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🖼️ Photos <span class="page-lock" data-lock-photos>🔒</span></a>
+    <a data-page-nav="system" href="#/system" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">💾 System & Update</a>
   </div>
 
   <!-- Main Container -->
@@ -678,6 +678,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         }
         setupRequired = false;
         isAuthenticated = data.authenticated;
+        renderLockIcons(isAuthenticated);
         if (isAuthenticated) {
           document.getElementById('btn-logout').classList.remove('hidden');
           document.getElementById('btn-login').classList.add('hidden');
@@ -685,6 +686,9 @@ DASHBOARD_HTML = """<!DOCTYPE html>
           document.getElementById('btn-logout').classList.add('hidden');
           document.getElementById('btn-login').classList.remove('hidden');
         }
+        // Once we know auth state, navigate to the pending target (if any) or
+        // the current hash page, guarding gated pages.
+        renderPage();
         return isAuthenticated;
       } catch (e) {
         return false;
@@ -781,6 +785,13 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         await loadStatus();
         // Re-fetch the auth-gated panels now that we have a session.
         await Promise.allSettled([loadTelemetry(), loadPhotos(), checkUpdate()]);
+        // Navigate to the page the user was trying to reach before login
+        // (or default to playlists). This unlocks the gated modules explicitly.
+        const target = window._pendingPage && (window._pendingPage in AUTH_PAGES)
+          ? window._pendingPage : 'playlists';
+        window._pendingPage = null;
+        location.hash = '/' + target;
+        renderPage();
       } else {
         err.textContent = "Invalid administrator password.";
         err.classList.remove('hidden');
@@ -789,7 +800,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
     async function logout() {
       await fetch('/api/auth/logout', {method: 'POST'});
-      checkAuthStatus();
+      isAuthenticated = false;
+      renderLockIcons(false);
+      location.hash = '/playlists';
+      renderPage();
     }
 
     async function updatePassword() {
@@ -2009,21 +2023,71 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }
 
     // ---------- Section tabs ----------
-    const RTABS = ['playlist', 'widgets', 'photos', 'backup'];
-    function showTab(tab) {
-      RTABS.forEach(t => {
-        const show = (t === tab);
+    // ---------- Multi-page router ----------
+    const PAGES = {
+      'playlists': 'playlist',
+      'widgets': 'widgets',
+      'photos': 'photos',
+      'system': 'backup'
+    };
+    const AUTH_PAGES = { photos: 'photos', system: 'backup' };
+
+    function currentPage() {
+      const h = location.hash.replace(/^#\/?/, '');
+      return (h in PAGES) ? h : 'playlists';
+    }
+
+    function renderLockIcons(auth) {
+      document.querySelectorAll('[data-lock-photos]').forEach(el => {
+        el.textContent = auth ? '✓' : '🔒';
+      });
+    }
+
+    function goToPage(page) {
+      // Defer the target if an auth-gated page is requested while logged out,
+      // so login can navigate there once the session is valid.
+      if ((page in AUTH_PAGES) && !isAuthenticated) {
+        window._pendingPage = page;
+        location.hash = '/playlists';
+        return;
+      }
+      location.hash = '/' + page;
+      renderPage();
+    }
+
+    function renderPage() {
+      const page = currentPage();
+      // Enforce auth gate on gated pages even when reached via hash.
+      const effective = ((page in AUTH_PAGES) && !isAuthenticated) ? 'playlists' : page;
+      if (effective !== page) {
+        // Remember what they wanted so login can route there, then bounce.
+        window._pendingPage = page;
+        location.hash = '/playlists';
+        return;
+      }
+      const tab = PAGES[page];
+      // Render only the active page's sections.
+      Object.keys(PAGES).forEach(p => {
+        const t = PAGES[p];
+        const show = (p === page);
         document.querySelectorAll('[data-tab="' + t + '"]').forEach(el => {
           el.style.display = show ? '' : 'none';
         });
-        const btn = document.querySelector('[data-rtab="' + t + '"]');
-        if (btn) {
-          btn.className = 'rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ' +
-            (show ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/30' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800');
-        }
       });
-      window._activeTab = tab;
+      // Nav active state.
+      document.querySelectorAll('[data-page-nav]').forEach(a => {
+        const on = (a.getAttribute('data-page-nav') === page);
+        a.className = 'rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ' +
+          (on ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/30' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800');
+      });
+      // Per-page lazy loaders.
+      if (page === 'widgets') { try { wfLoad(); } catch (e) {} }
+      if (page === 'photos') { try { loadPhotos(); } catch (e) {} }
+      if (page === 'system') { try { loadTelemetry(); checkUpdate(); } catch (e) {} }
+      window._activePage = page;
     }
+
+    window.addEventListener('hashchange', () => { renderPage(); });
 
     // ---------- Widget Finder catalogue ----------
     let WF_WIDGETS = [];
@@ -2076,18 +2140,17 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       if (sel && sel.querySelector('option[value="' + name + '"]')) {
         sel.value = name;
         dsRebuildSettings();
-        showTab('widgets');
+        location.hash = '/widgets';
+        renderPage();
         dsRender();
       }
     }
 
-    // Default to the Playlist Config tab; run finder + studio init.
+    // Default route. Auth-gated loads happen lazily per-page in renderPage();
+    // here we just begin on the Playlists page.
     wfLoad();
-    showTab('playlist');
-
-    loadTelemetry();
-    loadPhotos();
-    checkUpdate();
+    if (!location.hash) location.hash = '/playlists';
+    renderPage();
     devStudioInit();
   </script>
 </body>

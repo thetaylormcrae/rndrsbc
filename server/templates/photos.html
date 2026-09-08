@@ -1,4 +1,86 @@
-<!DOCTYPE html>
+"""
+rndrSBC - Production Web Management Dashboard & Secure API
+Hardened server with first-run authentication, session validation, path traversal protection,
+safe command execution, quiet hours scheduling, and multi-playlist management.
+"""
+
+import os
+import sys
+import json
+import time
+import io
+import secrets
+import logging
+import subprocess
+import threading
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+import urllib.parse
+from PIL import Image
+
+# Secure password hashing from Werkzeug
+from werkzeug.security import generate_password_hash, check_password_hash
+
+from core.paths import CONFIG_PATH, resolve
+
+# Onboarding: QR claim-token flow + AP-mode provisioning
+from server.onboarding import (
+    claim_url_for_token,
+    validate_claim_token,
+    consume_claim_token,
+    issue_claim_token,
+    invalidate_unclaimed_tokens,
+    onboarding_state,
+    ap_manager as onboarding_ap_manager,
+)
+
+logger = logging.getLogger("rndrSBC.server")
+
+# In-memory active session tokens: {session_token: {"created_at": float, "user": "admin"}}
+ACTIVE_SESSIONS: dict[str, dict] = {}
+# Sessions are also persisted to CONFIG_PATH so a service restart does not
+# log every client out (otherwise stats / OTA / photos / dev-studio all 401
+# until a manual re-login).
+_SESSION_LOCK = threading.Lock()
+SESSION_TTL_SECS = 86400 * 7 # 7 days
+
+
+def _load_sessions(force: bool = False) -> None:
+    """Populate ACTIVE_SESSIONS from the persisted copy in CONFIG_PATH."""
+    if not force and ACTIVE_SESSIONS:
+        return
+    try:
+        if os.path.exists(CONFIG_PATH):
+            with open(CONFIG_PATH, "r") as f:
+                cfg = json.load(f)
+            saved = cfg.get("admin_sessions") or {}
+            now = time.time()
+            for tok, meta in saved.items():
+                if now - float(meta.get("created_at", 0)) < SESSION_TTL_SECS:
+                    ACTIVE_SESSIONS[tok] = meta
+    except Exception:
+        logger.debug("Could not load persisted admin sessions", exc_info=True)
+
+
+def _save_sessions() -> None:
+    """Persist ACTIVE_SESSIONS into CONFIG_PATH (best-effort, atomic)."""
+    try:
+        with _SESSION_LOCK:
+            cfg = {}
+            if os.path.exists(CONFIG_PATH):
+                with open(CONFIG_PATH, "r") as f:
+                    cfg = json.load(f)
+            cfg["admin_sessions"] = {
+                tok: m for tok, m in ACTIVE_SESSIONS.items()
+            }
+            tmp = CONFIG_PATH + ".tmp"
+            with open(tmp, "w") as f:
+                json.dump(cfg, f, indent=2)
+            os.replace(tmp, CONFIG_PATH)
+    except Exception:
+        logger.debug("Could not persist admin sessions", exc_info=True)
+
+
+DASHBOARD_HTML = """<!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
@@ -49,44 +131,56 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body class="text-slate-100 min-h-screen flex flex-col antialiased">
-
-  <!-- Navigation Bar -->
-  <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 px-6 py-3.5 sticky top-0 z-40 flex items-center justify-between">
-    <div class="flex items-center space-x-3">
-      <div class="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center font-bold text-white tracking-wider text-sm shadow-lg shadow-orange-600/30">
-        rS
+  <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 px-6 py-3.5 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center font-bold text-white text-sm shadow-lg shadow-orange-600/30">rS</div>
+        <div class="hidden sm:block">
+          <h1 class="font-bold text-base tracking-tight text-white leading-tight">rndrSBC <span class="text-orange-400">Portal</span></h1>
+          <p class="text-[10px] text-slate-500 -mt-0.5">E-Paper Management</p>
+        </div>
       </div>
-      <div>
-        <h1 class="font-bold text-base tracking-tight text-white flex items-center gap-2">
-          rndrSBC <span class="text-[11px] font-normal px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20">PRO</span>
-        </h1>
-        <p class="text-xs text-slate-400 hidden sm:block">High-Performance Native E-Paper OS</p>
-      </div>
-    </div>
-
-    <div class="flex items-center space-x-3">
-      <button id="btn-refresh" onclick="refreshDisplayNow()" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition">
-        <svg class="w-3.5 h-3.5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-        <span>Refresh Screen</span>
-      </button>
-      <button id="btn-apply" onclick="saveAndApply()" class="flex items-center space-x-1.5 px-4 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-xs font-semibold text-white shadow-lg shadow-orange-600/30 transition">
-        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-        <span>Save & Apply</span>
-      </button>
-      
-      <div id="auth-controls" class="pl-2 border-l border-slate-800">
-        <button id="btn-logout" onclick="logout()" class="hidden text-xs text-slate-400 hover:text-rose-400 px-2 py-1.5 rounded border border-slate-800 hover:border-rose-900 transition">Logout</button>
-        <button id="btn-login" onclick="showLoginModal()" class="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Login</button>
+      <nav id="main-nav" class="hidden md:flex items-center space-x-1">
+        <a href="/" data-nav="dashboard" class="navlink px-3 py-1.5 rounded-lg text-xs font-semibold transition">Dashboard</a>
+        <a href="/playlists" data-nav="playlists" class="text-slate-400 hover:text-slate-100 hover:bg-slate-800">Playlists</a>
+        <a href="/widgets" data-nav="widgets" class="text-slate-400 hover:text-slate-100 hover:bg-slate-800">Widgets</a>
+        <a href="/settings" data-nav="settings" class="text-slate-400 hover:text-slate-100 hover:bg-slate-800">Settings</a>
+        <a href="/photos" data-nav="photos" class="bg-orange-600 text-white shadow-lg shadow-orange-600/30">Photos</a>
+        <a href="/system" data-nav="system" class="text-slate-400 hover:text-slate-100 hover:bg-slate-800">System</a>
+      </nav>
+      <div class="flex items-center space-x-2">
+        <button id="btn-refresh" onclick="refreshDisplayNow()" class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition">
+          <svg class="w-3.5 h-3.5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <span>Refresh</span>
+        </button>
+        <button id="btn-apply" onclick="saveAndApply()" class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-xs font-semibold text-white shadow-lg shadow-orange-600/30 transition">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+        <span>Apply</span>
+        </button>
+        <div class="pl-2 border-l border-slate-800 flex items-center space-x-2">
+          <button id="btn-logout" onclick="logout()" class="hidden text-xs text-slate-400 hover:text-rose-400 px-2 py-1.5 rounded border border-slate-800 hover:border-rose-900 transition">Logout</button>
+          <button id="btn-login" onclick="showLoginModal()" class="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Login</button>
+        </div>
       </div>
     </div>
   </header>
+  <nav class="md:hidden sticky top-[62px] z-30 bg-slate-950/95 backdrop-blur border-b border-slate-800 px-2 py-1.5 flex gap-1 overflow-x-auto">
+     class="hidden md:flex items-center space-x-1">
+        <a href="/" data-nav="dashboard" class="navlink px-3 py-1.5 rounded-lg text-xs font-semibold transition">Dashboard</a>
+        <a href="/playlists" data-nav="playlists" class="navlink px-3 py-1.5 rounded-lg text-xs font-semibold transition">Playlists</a>
+        <a href="/widgets" data-nav="widgets" class="navlink px-3 py-1.5 rounded-lg text-xs font-semibold transition">Widgets</a>
+        <a href="/settings" data-nav="settings" class="navlink px-3 py-1.5 rounded-lg text-xs font-semibold transition">Settings</a>
+        <a href="/photos" data-nav="photos" class="navlink px-3 py-1.5 rounded-lg text-xs font-semibold transition">Photos</a>
+        <a href="/system" data-nav="system" class="navlink px-3 py-1.5 rounded-lg text-xs font-semibold transition">System</a>
+      
+  </nav>
   <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
-      <section class="bg-slate-900/70 rounded-2xl border border-slate-800 p-5">
-        <h2 class="text-lg font-bold text-white mb-1">🖼️ Photos</h2>
-        <p class="text-xs text-slate-400 mb-4">Upload images and push them to the display.</p>
-        <div id="photos-content"></div>
+      <section class="bg-slate-900/70 rounded-2xl border border-slate-800 p-5 space-y-4">
+        <h2 class="text-lg font-bold text-white">Photos</h2>
+        <p class="text-xs text-slate-400">Upload images and push them to the display.</p>
+        <div id="photos-content" class="text-xs text-slate-400">Loading&hellip;</div>
       </section>
-    </main>
+  </main>
 
   <!-- First-Run Admin Setup Modal -->
   <div id="modal-setup" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
@@ -178,17 +272,10 @@
         }
         setupRequired = false;
         isAuthenticated = data.authenticated;
-        if (isAuthenticated) {
-          const lo = document.getElementById('nav-logout-btn');
-          const li = document.getElementById('nav-login-btn');
-          if (lo) lo.classList.remove('hidden');
-          if (li) li.classList.add('hidden');
-        } else {
-          const lo = document.getElementById('nav-logout-btn');
-          const li = document.getElementById('nav-login-btn');
-          if (lo) lo.classList.add('hidden');
-          if (li) li.classList.remove('hidden');
-        }
+        const lo = document.getElementById('btn-logout');
+        const li = document.getElementById('btn-login');
+        if (lo) lo.classList.toggle('hidden', isAuthenticated);
+        if (li) li.classList.toggle('hidden', !isAuthenticated);
         return isAuthenticated;
       } catch (e) {
         return false;
@@ -1575,6 +1662,12 @@
         dsRender();
       }
     }
+  </script>
+  <script>
+    (async () => {
+      await checkAuthStatus();
+      if (isAuthenticated) { try { loadPhotos(); } catch (e) {} }
+    })();
   </script>
 </body>
 </html>

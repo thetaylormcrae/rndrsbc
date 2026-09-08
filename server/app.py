@@ -679,17 +679,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         }
         setupRequired = false;
         isAuthenticated = data.authenticated;
-        if (isAuthenticated) {
-          const lo = document.getElementById('nav-logout-btn');
-          const li = document.getElementById('nav-login-btn');
-          if (lo) lo.classList.remove('hidden');
-          if (li) li.classList.add('hidden');
-        } else {
-          const lo = document.getElementById('nav-logout-btn');
-          const li = document.getElementById('nav-login-btn');
-          if (lo) lo.classList.add('hidden');
-          if (li) li.classList.remove('hidden');
-        }
+        const lo = document.getElementById('btn-logout');
+        const li = document.getElementById('btn-login');
+        if (lo) lo.classList.toggle('hidden', isAuthenticated);
+        if (li) li.classList.toggle('hidden', !isAuthenticated);
         return isAuthenticated;
       } catch (e) {
         return false;

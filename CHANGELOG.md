@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.20.0 (2026-09-08)
+
+### Features
+
+- **admin**: Lock gated pages behind auth with lock overlay
+  ([`6aa0102`](https://github.com/thetaylormcrae/rndrsbc/commit/6aa0102abac74b5aed0051c7262343d204526184))
+
+
 ## v0.19.0 (2026-09-08)
 
 ### Features

@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.21.1 (2026-09-08)
+
+### Bug Fixes
+
+- **admin**: Strip python preamble leaking at top of html templates
+  ([`6508e16`](https://github.com/thetaylormcrae/rndrsbc/commit/6508e16868cbad450f47e2bed97d335ad14ec7bb))
+
+
 ## v0.21.0 (2026-09-08)
 
 ### Features

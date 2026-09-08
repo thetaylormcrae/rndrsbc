@@ -779,11 +779,24 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         await loadStatus();
         // Re-fetch the auth-gated panels now that we have a session.
         await Promise.allSettled([loadTelemetry(), loadPhotos(), checkUpdate()]);
-        // Stay on the page the user was on when they logged in; auth-gated
-        // panels are now unlocked for this session.
-        const target = window._pendingPage || (window.location.pathname || '/');
-        window._pendingPage = null;
-        window.location.href = target;
+        // Stay on the page the user was on when they logged in; unlock the
+        // auth-lock overlay and load that page's panels for this session.
+        const lock = document.getElementById('auth-lock');
+        if (lock) lock.classList.add('hidden');
+        if (setupRequired) setupRequired = false;
+        if (window.location.pathname === '/playlists') {
+          try { renderPlaylistTabs(); renderPlaylist(); } catch (e) {}
+        } else if (window.location.pathname === '/widgets') {
+          try { devStudioInit(); } catch (e) {}
+        } else if (window.location.pathname === '/settings') {
+          try { buildTimezoneSelect(); updateHardwareSettings(); updateQuietHoursSettings(); updateDeviceSettings(); } catch (e) {}
+        } else if (window.location.pathname === '/photos') {
+          try { loadPhotos(); } catch (e) {}
+        } else if (window.location.pathname === '/system') {
+          try { loadTelemetry(); checkUpdate(); } catch (e) {}
+        } else {
+          try { await loadStatus(); renderPlaylistTabs(); } catch (e) {}
+        }
       } else {
         err.textContent = "Invalid administrator password.";
         err.classList.remove('hidden');
@@ -793,7 +806,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     async function logout() {
       await fetch('/api/auth/logout', {method: 'POST'});
       isAuthenticated = false;
-      window.location.href = '/';
+      const lock = document.getElementById('auth-lock');
+      if (lock) lock.classList.remove('hidden');
+      const path = window.location.pathname;
+      if (path === '/') { window.location.href = '/'; }
     }
 
     async function updatePassword() {

@@ -174,6 +174,15 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         <a href="/system" data-nav="system" class="navlink px-3 py-1.5 rounded-lg text-xs font-semibold transition">System</a>
       
   </nav>
+    <!-- Auth Lock Overlay -->
+    <div id="auth-lock" class="hidden fixed inset-0 z-40 bg-slate-950/95 backdrop-blur flex items-center justify-center p-4">
+      <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-center">
+        <div class="text-4xl">&#128274;</div>
+        <h3 class="font-bold text-base text-slate-100">Administrator sign-in required</h3>
+        <p class="text-xs text-slate-400">This page is locked behind admin authentication.</p>
+        <button onclick="showLoginModal()" class="w-full py-2.5 rounded-lg bg-orange-600 hover:bg-orange-500 font-semibold text-sm text-white shadow-lg shadow-orange-600/30 transition">Log In</button>
+      </div>
+    </div>
   <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
       <section class="bg-slate-900/70 rounded-2xl border border-slate-800 p-5 space-y-4">
         <h2 class="text-lg font-bold text-white">System &amp; Update</h2>
@@ -1667,11 +1676,16 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   <script>
     (async () => {
       await checkAuthStatus();
+      const lock = document.getElementById('auth-lock');
       if (isAuthenticated) {
+        lock.classList.add('hidden');
         try { loadTelemetry(); } catch (e) {}
         try { checkUpdate(); } catch (e) {}
+      } else {
+        lock.classList.remove('hidden');
       }
     })();
+
   </script>
 </body>
 </html>

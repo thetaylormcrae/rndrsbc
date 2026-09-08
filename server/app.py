@@ -165,10 +165,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
 
   <!-- Section Navigator -->
   <div id="section-tabs" class="sticky top-[64px] z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-2 flex gap-1 overflow-x-auto">
-    <a data-page-nav="playlists" href="#/playlists" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🎛️ Playlists</a>
-    <a data-page-nav="widgets" href="#/widgets" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🧩 Widgets</a>
-    <a data-page-nav="photos" href="#/photos" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🖼️ Photos <span class="page-lock" data-lock-photos>🔒</span></a>
-    <a data-page-nav="system" href="#/system" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">💾 System & Update</a>
+    <a data-page-nav="playlists" href="/playlists" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🎛️ Playlists</a>
+    <a data-page-nav="widgets" href="/widgets" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🧩 Widgets</a>
+    <a data-page-nav="settings" href="/settings" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">⚙️ Settings</a>
+    <a data-page-nav="photos" href="/photos" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🖼️ Photos <span class="page-lock" data-lock-photos>🔒</span></a>
+    <a data-page-nav="system" href="/system" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">💾 System & Update</a>
   </div>
 
   <!-- Main Container -->
@@ -678,17 +679,17 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         }
         setupRequired = false;
         isAuthenticated = data.authenticated;
-        renderLockIcons(isAuthenticated);
         if (isAuthenticated) {
-          document.getElementById('btn-logout').classList.remove('hidden');
-          document.getElementById('btn-login').classList.add('hidden');
+          const lo = document.getElementById('nav-logout-btn');
+          const li = document.getElementById('nav-login-btn');
+          if (lo) lo.classList.remove('hidden');
+          if (li) li.classList.add('hidden');
         } else {
-          document.getElementById('btn-logout').classList.add('hidden');
-          document.getElementById('btn-login').classList.remove('hidden');
+          const lo = document.getElementById('nav-logout-btn');
+          const li = document.getElementById('nav-login-btn');
+          if (lo) lo.classList.add('hidden');
+          if (li) li.classList.remove('hidden');
         }
-        // Once we know auth state, navigate to the pending target (if any) or
-        // the current hash page, guarding gated pages.
-        renderPage();
         return isAuthenticated;
       } catch (e) {
         return false;
@@ -785,11 +786,11 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         await loadStatus();
         // Re-fetch the auth-gated panels now that we have a session.
         await Promise.allSettled([loadTelemetry(), loadPhotos(), checkUpdate()]);
-        // Navigate to the page the user was trying to reach before login
-        // (or default to playlists). This unlocks the gated modules explicitly.
-        const target = window._pendingPage || 'playlists';
+        // Stay on the page the user was on when they logged in; auth-gated
+        // panels are now unlocked for this session.
+        const target = window._pendingPage || (window.location.pathname || '/');
         window._pendingPage = null;
-        window.location.href = '/' + (target === 'dashboard' ? '' : target);
+        window.location.href = target;
       } else {
         err.textContent = "Invalid administrator password.";
         err.classList.remove('hidden');
@@ -2019,71 +2020,6 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     }
 
     // ---------- Section tabs ----------
-    // ---------- Multi-page router ----------
-    const PAGES = {
-      'playlists': 'playlist',
-      'widgets': 'widgets',
-      'photos': 'photos',
-      'system': 'backup'
-    };
-    const AUTH_PAGES = { photos: 'photos', system: 'backup' };
-
-    function currentPage() {
-      const h = location.hash.replace(/^#\/?/, '');
-      return (h in PAGES) ? h : 'playlists';
-    }
-
-    function renderLockIcons(auth) {
-      document.querySelectorAll('[data-lock-photos]').forEach(el => {
-        el.textContent = auth ? '✓' : '🔒';
-      });
-    }
-
-    function goToPage(page) {
-      // Defer the target if an auth-gated page is requested while logged out,
-      // so login can navigate there once the session is valid.
-      if ((page in AUTH_PAGES) && !isAuthenticated) {
-        window._pendingPage = page;
-        location.hash = '/playlists';
-        return;
-      }
-      location.hash = '/' + page;
-      renderPage();
-    }
-
-    function renderPage() {
-      const page = currentPage();
-      // Enforce auth gate on gated pages even when reached via hash.
-      const effective = ((page in AUTH_PAGES) && !isAuthenticated) ? 'playlists' : page;
-      if (effective !== page) {
-        // Remember what they wanted so login can route there, then bounce.
-        window._pendingPage = page;
-        location.hash = '/playlists';
-        return;
-      }
-      const tab = PAGES[page];
-      // Render only the active page's sections.
-      Object.keys(PAGES).forEach(p => {
-        const t = PAGES[p];
-        const show = (p === page);
-        document.querySelectorAll('[data-tab="' + t + '"]').forEach(el => {
-          el.style.display = show ? '' : 'none';
-        });
-      });
-      // Nav active state.
-      document.querySelectorAll('[data-page-nav]').forEach(a => {
-        const on = (a.getAttribute('data-page-nav') === page);
-        a.className = 'rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ' +
-          (on ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/30' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800');
-      });
-      // Per-page lazy loaders.
-      if (page === 'widgets') { try { wfLoad(); } catch (e) {} }
-      if (page === 'photos') { try { loadPhotos(); } catch (e) {} }
-      if (page === 'system') { try { loadTelemetry(); checkUpdate(); } catch (e) {} }
-      window._activePage = page;
-    }
-
-    window.addEventListener('hashchange', () => { renderPage(); });
 
     // ---------- Widget Finder catalogue ----------
     let WF_WIDGETS = [];
@@ -2136,18 +2072,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       if (sel && sel.querySelector('option[value="' + name + '"]')) {
         sel.value = name;
         dsRebuildSettings();
-        location.hash = '/widgets';
-        renderPage();
+        window.location.href = '/widgets';
         dsRender();
       }
     }
-
-    // Default route. Auth-gated loads happen lazily per-page in renderPage();
-    // here we just begin on the Playlists page.
-    wfLoad();
-    if (!location.hash) location.hash = '/playlists';
-    renderPage();
-    devStudioInit();
   </script>
 </body>
 </html>

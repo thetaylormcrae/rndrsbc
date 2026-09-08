@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.18.0 (2026-09-08)
+
+### Features
+
+- **admin**: Transition to genuine multi-page InkyPi architecture with separate HTML templates
+  ([`4bcb129`](https://github.com/thetaylormcrae/rndrsbc/commit/4bcb1290b4700b622b03981c58e53f3cbb1e7708))
+
+
 ## v0.17.0 (2026-09-07)
 
 ### Features

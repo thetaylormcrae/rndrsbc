@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.18.1 (2026-09-08)
+
+### Bug Fixes
+
+- **admin**: Restore shared nav and auth across distinct pages
+  ([`222c7fa`](https://github.com/thetaylormcrae/rndrsbc/commit/222c7facdcdba30b60c93695311d740568cfa304))
+
+
 ## v0.18.0 (2026-09-08)
 
 ### Features

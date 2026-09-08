@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.21.0 (2026-09-08)
+
+### Features
+
+- **auth**: Switch admin sessions to sliding 1-hour inactivity expiry
+  ([`93d6082`](https://github.com/thetaylormcrae/rndrsbc/commit/93d6082c01e19e59307ff34233b8551f09c235a3))
+
+
 ## v0.20.1 (2026-09-08)
 
 ### Bug Fixes

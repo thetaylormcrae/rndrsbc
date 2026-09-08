@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.19.0 (2026-09-08)
+
+### Features
+
+- **admin**: Rebuild admin pages with shared nav, per-page init, and locked gated sections
+  ([`b5e6854`](https://github.com/thetaylormcrae/rndrsbc/commit/b5e6854557fae232ee3e05b531b9e5b1d60eb503))
+
+
 ## v0.18.1 (2026-09-08)
 
 ### Bug Fixes

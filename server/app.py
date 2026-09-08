@@ -41,7 +41,7 @@ ACTIVE_SESSIONS: dict[str, dict] = {}
 # log every client out (otherwise stats / OTA / photos / dev-studio all 401
 # until a manual re-login).
 _SESSION_LOCK = threading.Lock()
-SESSION_TTL_SECS = 86400 * 7 # 7 days
+SESSION_TTL_SECS = 3600  # 1 hour - admin sessions expire quickly
 
 
 def _load_sessions(force: bool = False) -> None:
@@ -2617,7 +2617,7 @@ class ProductionHandler(QuietHandler):
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
-                self.send_header("Set-Cookie", f"rndrsbc_session={token}; Path=/; HttpOnly; SameSite=Lax")
+                self.send_header("Set-Cookie", f"rndrsbc_session={token}; Path=/; Max-Age={SESSION_TTL_SECS}; HttpOnly; SameSite=Lax")
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "ok", "token": token}).encode("utf-8"))
                 return
@@ -2642,7 +2642,7 @@ class ProductionHandler(QuietHandler):
                     _save_sessions()
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
-                    self.send_header("Set-Cookie", f"rndrsbc_session={token}; Path=/; HttpOnly; SameSite=Lax")
+                    self.send_header("Set-Cookie", f"rndrsbc_session={token}; Path=/; Max-Age={SESSION_TTL_SECS}; HttpOnly; SameSite=Lax")
                     self.end_headers()
                     self.wfile.write(json.dumps({"status": "ok", "token": token}).encode("utf-8"))
                 else:
@@ -2695,7 +2695,7 @@ class ProductionHandler(QuietHandler):
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
-                self.send_header("Set-Cookie", f"rndrsbc_session={token}; Path=/; HttpOnly; SameSite=Lax")
+                self.send_header("Set-Cookie", f"rndrsbc_session={token}; Path=/; Max-Age={SESSION_TTL_SECS}; HttpOnly; SameSite=Lax")
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "ok", "message": "Password updated successfully."}).encode("utf-8"))
                 return

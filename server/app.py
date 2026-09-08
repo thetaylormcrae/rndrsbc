@@ -35,13 +35,14 @@ from server.onboarding import (
 
 logger = logging.getLogger("rndrSBC.server")
 
-# In-memory active session tokens: {session_token: {"created_at": float, "user": "admin"}}
+# In-memory active session tokens: {token: {"created_at", "last_seen", "user"}}
 ACTIVE_SESSIONS: dict[str, dict] = {}
 # Sessions are also persisted to CONFIG_PATH so a service restart does not
 # log every client out (otherwise stats / OTA / photos / dev-studio all 401
 # until a manual re-login).
 _SESSION_LOCK = threading.Lock()
-SESSION_TTL_SECS = 3600  # 1 hour - admin sessions expire quickly
+SESSION_TTL_SECS = 3600  # sliding: 1 hour of inactivity (refreshed on each authenticated request)
+SESSION_TOUCH_INTERVAL = 60  # persist last_seen refresh at most once per minute
 
 
 def _load_sessions(force: bool = False) -> None:
@@ -55,7 +56,8 @@ def _load_sessions(force: bool = False) -> None:
             saved = cfg.get("admin_sessions") or {}
             now = time.time()
             for tok, meta in saved.items():
-                if now - float(meta.get("created_at", 0)) < SESSION_TTL_SECS:
+                last_seen = float(meta.get("last_seen", meta.get("created_at", 0)))
+                if now - last_seen < SESSION_TTL_SECS:
                     ACTIVE_SESSIONS[tok] = meta
     except Exception:
         logger.debug("Could not load persisted admin sessions", exc_info=True)
@@ -70,7 +72,8 @@ def _save_sessions() -> None:
                 with open(CONFIG_PATH, "r") as f:
                     cfg = json.load(f)
             cfg["admin_sessions"] = {
-                tok: m for tok, m in ACTIVE_SESSIONS.items()
+                tok: {k: v for k, v in m.items() if not k.startswith("_")}
+                for tok, m in ACTIVE_SESSIONS.items()
             }
             tmp = CONFIG_PATH + ".tmp"
             with open(tmp, "w") as f:
@@ -2132,7 +2135,14 @@ class ProductionHandler(QuietHandler):
 
         if token and token in ACTIVE_SESSIONS:
             sess = ACTIVE_SESSIONS[token]
-            if time.time() - sess.get("created_at", 0) < SESSION_TTL_SECS:
+            now = time.time()
+            last_seen = float(sess.get("last_seen", sess.get("created_at", 0)))
+            if now - last_seen < SESSION_TTL_SECS:
+                # Sliding expiry: keep the session alive while it is in use.
+                sess["last_seen"] = now
+                if now - float(sess.get("_last_persist", 0)) > SESSION_TOUCH_INTERVAL:
+                    sess["_last_persist"] = now
+                    _save_sessions()
                 return True
             else:
                 del ACTIVE_SESSIONS[token]
@@ -2612,12 +2622,12 @@ class ProductionHandler(QuietHandler):
 
                 # Auto-login after setup
                 token = secrets.token_hex(32)
-                ACTIVE_SESSIONS[token] = {"created_at": time.time(), "user": "admin"}
+                ACTIVE_SESSIONS[token] = {"created_at": time.time(), "last_seen": time.time(), "user": "admin"}
                 _save_sessions()
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
-                self.send_header("Set-Cookie", f"rndrsbc_session={token}; Path=/; Max-Age={SESSION_TTL_SECS}; HttpOnly; SameSite=Lax")
+                self.send_header("Set-Cookie", f"rndrsbc_session={token}; Path=/; Max-Age=86400; HttpOnly; SameSite=Lax")
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "ok", "token": token}).encode("utf-8"))
                 return
@@ -2638,11 +2648,11 @@ class ProductionHandler(QuietHandler):
                 pwd_hash = cfg.get("admin_password_hash", "")
                 if pwd_hash and check_password_hash(pwd_hash, pwd):
                     token = secrets.token_hex(32)
-                    ACTIVE_SESSIONS[token] = {"created_at": time.time(), "user": "admin"}
+                    ACTIVE_SESSIONS[token] = {"created_at": time.time(), "last_seen": time.time(), "user": "admin"}
                     _save_sessions()
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
-                    self.send_header("Set-Cookie", f"rndrsbc_session={token}; Path=/; Max-Age={SESSION_TTL_SECS}; HttpOnly; SameSite=Lax")
+                    self.send_header("Set-Cookie", f"rndrsbc_session={token}; Path=/; Max-Age=86400; HttpOnly; SameSite=Lax")
                     self.end_headers()
                     self.wfile.write(json.dumps({"status": "ok", "token": token}).encode("utf-8"))
                 else:
@@ -2690,12 +2700,12 @@ class ProductionHandler(QuietHandler):
                     json.dump(cfg, f, indent=2)
 
                 token = secrets.token_hex(32)
-                ACTIVE_SESSIONS[token] = {"created_at": time.time(), "user": "admin"}
+                ACTIVE_SESSIONS[token] = {"created_at": time.time(), "last_seen": time.time(), "user": "admin"}
                 _save_sessions()
 
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json")
-                self.send_header("Set-Cookie", f"rndrsbc_session={token}; Path=/; Max-Age={SESSION_TTL_SECS}; HttpOnly; SameSite=Lax")
+                self.send_header("Set-Cookie", f"rndrsbc_session={token}; Path=/; Max-Age=86400; HttpOnly; SameSite=Lax")
                 self.end_headers()
                 self.wfile.write(json.dumps({"status": "ok", "message": "Password updated successfully."}).encode("utf-8"))
                 return

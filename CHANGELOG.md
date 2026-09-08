@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.20.1 (2026-09-08)
+
+### Bug Fixes
+
+- **auth**: Shorten admin session TTL from 7 days to 1 hour
+  ([`e1c7910`](https://github.com/thetaylormcrae/rndrsbc/commit/e1c7910dbefc3bbcb3f4e7d43e35b56d59807f24))
+
+
 ## v0.20.0 (2026-09-08)
 
 ### Features

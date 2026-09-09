@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.22.0 (2026-09-09)
+
+### Features
+
+- **web**: GPL-3.0 + Flask rewrite of the admin dashboard
+  ([`1678b52`](https://github.com/thetaylormcrae/rndrsbc/commit/1678b52fc99f98dc602c84fd5e6f07a64cfcd3b3))
+
+
 ## v0.21.3 (2026-09-09)
 
 ### Bug Fixes

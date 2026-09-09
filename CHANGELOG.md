@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v0.21.2 (2026-09-09)
+
+### Bug Fixes
+
+- **admin**: Rebuild multi-page templates via deterministic builder
+  ([`4b3156d`](https://github.com/thetaylormcrae/rndrsbc/commit/4b3156dd4593e92bd0ffef5e619947cd94495011))
+
+### Testing
+
+- **admin**: Template integrity guards (doctype prologue, no python artifacts, nav shell)
+  ([`378e5ea`](https://github.com/thetaylormcrae/rndrsbc/commit/378e5ea848b6409c71f9a755110ce2ebd8c89d44))
+
+
 ## v0.21.1 (2026-09-08)
 
 ### Bug Fixes

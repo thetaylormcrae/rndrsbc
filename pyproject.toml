@@ -7,7 +7,7 @@ name = "rndrsbc"
 description = "Native E-Paper Operating Platform for Raspberry Pi color e-paper panels."
 readme = "README.md"
 requires-python = ">=3.9"
-license = { text = "MIT" }
+license = { text = "GPL-3.0-or-later" }
 authors = [{ name = "rndrSBC" }]
 dynamic = ["version"]
 

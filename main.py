@@ -272,8 +272,8 @@ def main():
 
     # Start Production Web Control Panel
     try:
-        from server.app import run_production_server  # lazy: not needed for --once
-        run_production_server(scheduler, port=port)
+        from server.web.server import run_flask_server  # Flask/waitress dashboard
+        run_flask_server(scheduler, port=port)
     except KeyboardInterrupt:
         logger.info("Shutting down rndrSBC...")
         scheduler.stop()

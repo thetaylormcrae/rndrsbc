@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.22.2 (2026-09-09)
+
+### Bug Fixes
+
+- **web**: Single nav, wrapped init scripts, mobile nav accordion
+  ([`67f2c25`](https://github.com/thetaylormcrae/rndrsbc/commit/67f2c25469bdfc1df3003c4f999a477257284e10))
+
+
 ## v0.22.1 (2026-09-09)
 
 ### Bug Fixes

@@ -58,12 +58,14 @@ def main():
     if args.platform:
         tag = parse_platform(args.platform)
         # Cross-arch download. Pillow ships manylinux wheels that work for
-        # any recent Python, and pure-python wheels (requests/werkzeug/certifi)
-        # are ABI-agnostic, so a generic --python-version is safe here.
+        # any recent Python, and pure-python wheels (requests/werkzeug/flask/
+        # certifi/itsdangerous/jinja2) are ABI-agnostic. Target the device
+        # runtime (Python 3.13) so the wheels we vendor are the ones that
+        # actually install there.
         # Two tags: the requested platform plus "any" for the pure-python deps.
         cmd += ["--platform", tag,
                 "--platform", "any",
-                "--python-version", "3.10"]
+                "--python-version", "3.13"]
 
     print(f"Downloading runtime wheels -> {VENDOR}")
     subprocess.check_call(cmd)

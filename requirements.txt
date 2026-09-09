@@ -1,7 +1,7 @@
 # rndrSBC - true runtime dependencies. EXACT VERSIONS PINNED to match the
 # wheels currently bundled in vendor/deps/ so build_vendor_deps.py reproduces
 # byte-identical bundles for the offline self-contained runtime.
-Pillow==12.3.0
+Pillow==12.2.0
 requests==2.34.2
 werkzeug==3.1.8
 Flask==3.1.3

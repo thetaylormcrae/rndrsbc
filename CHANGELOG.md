@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.21.3 (2026-09-09)
+
+### Bug Fixes
+
+- **admin**: Close settings grid wrapper in builder; div-balance verified on all pages
+  ([`3c6e2d0`](https://github.com/thetaylormcrae/rndrsbc/commit/3c6e2d0fcb4f9cef73a57b192a41ee73a9f8455b))
+
+
 ## v0.21.2 (2026-09-09)
 
 ### Bug Fixes

@@ -87,6 +87,7 @@ def issue_bearer_token() -> str:
     token = "rndr_" + secrets.token_hex(24)
     toks = bearer_tokens()
     toks[token] = {"last_seen": time.time()}
+    os.makedirs(os.path.dirname(_bearer_file()), exist_ok=True)
     with open(_bearer_file(), "w") as f:
         json.dump(toks, f, indent=2)
     return token

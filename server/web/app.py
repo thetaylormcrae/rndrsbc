@@ -19,6 +19,11 @@ ASSETS = os.path.join(_ROOT, "assets")
 
 
 def create_app(scheduler=None, secret_key: str | None = None) -> Flask:
+    # Runtime dirs (data/, registry/, plugins/) must exist even when the app
+    # is instantiated outside the normal CLI entrypoint (tests, CI, dev).
+    from core.paths import ensure_data_dir
+    ensure_data_dir()
+
     app = Flask("rndrsbc",
                 template_folder=TEMPLATES,
                 static_folder=None)  # assets served explicitly, with traversal guard

@@ -192,3 +192,17 @@ class TestStaticAssets:
     def test_unknown_asset_404(self, client):
         c, _, _, factory = client
         assert c.get("/assets/nonexistent.png").status_code == 404
+
+
+def test_bearer_issue_without_data_dir(monkeypatch, tmp_path):
+    """Regression (CI): a fresh checkout has no data/ (gitignored), so
+    issue_bearer_token() must create the directory, not crash."""
+    from core import paths
+    import server.web.security as sec
+
+    missing = tmp_path / "data"          # does NOT exist
+    monkeypatch.setattr(paths, "DATA_DIR", str(missing))
+    token = sec.issue_bearer_token()
+    assert token.startswith("rndr_")
+    assert missing.exists()              # dir auto-created
+    assert token in sec.bearer_tokens()

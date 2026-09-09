@@ -49,9 +49,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 
-<body class="text-slate-100 min-h-screen flex flex-col antialiased">
-
-  <!-- Navigation Bar -->
+<!-- Navigation Bar -->
   <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 px-6 py-3.5 sticky top-0 z-40 flex items-center justify-between">
     <div class="flex items-center space-x-3">
       <div class="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center font-bold text-white tracking-wider text-sm shadow-lg shadow-orange-600/30">
@@ -82,17 +80,14 @@
     </div>
   </header>
 
-  <!-- Section Navigator -->
-  <div id="section-tabs" class="sticky top-[64px] z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-2 flex gap-1 overflow-x-auto">
-    <a data-page-nav="playlists" href="/playlists" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🎛️ Playlists</a>
-    <a data-page-nav="widgets" href="/widgets" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🧩 Widgets</a>
-    <a data-page-nav="settings" href="/settings" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">⚙️ Settings</a>
-    <a data-page-nav="photos" href="/photos" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🖼️ Photos <span class="page-lock" data-lock-photos>🔒</span></a>
-    <a data-page-nav="system" href="/system" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">💾 System & Update</a>
-  </div>
+    <!-- Mobile hamburger (md:hidden) -->
+    <button id="nav-toggle" class="md:hidden p-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 transition" aria-label="Menu">
+      <svg class="w-5 h-5 text-slate-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+    </button>
+
 
   <!-- Page Nav -->
-  <div id="section-tabs" class="sticky top-[64px] z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800">
+  <div id="section-tabs" class="sticky top-[64px] z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-2 flex gap-1 overflow-x-auto">
     <a href="/" class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition text-slate-400 hover:text-slate-100 hover:bg-slate-800">Dashboard</a>
     <a href="/playlists" class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition text-slate-400 hover:text-slate-100 hover:bg-slate-800">Playlists</a>
     <a href="/widgets" class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition text-slate-400 hover:text-slate-100 hover:bg-slate-800">Widgets</a>
@@ -100,6 +95,43 @@
     <a href="/photos" class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition text-slate-400 hover:text-slate-100 hover:bg-slate-800">Photos</a>
     <a href="/system" class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition bg-orange-600 text-white shadow-lg shadow-orange-600/30">System</a>
   </div>
+
+
+  <!-- Mobile Nav (accordion) -->
+  <div id="mobile-nav" class="hidden md:hidden bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 py-3 space-y-1">
+    <!-- populated by JS below; keeps markup in one place -->
+  </div>
+  <script>
+  (function () {
+    const LINKS = [
+      ['/', 'Dashboard'],
+      ['/playlists', 'Playlists'],
+      ['/widgets', 'Widgets'],
+      ['/settings', 'Settings'],
+      ['/photos', 'Photos'],
+      ['/system', 'System'],
+    ];
+    const LOCKED = new Set(['playlists', 'widgets', 'settings', 'photos', 'system']);
+    const active = window.location.pathname.replace(/\/$/, '') || '/';
+    const nav = document.getElementById('mobile-nav');
+    if (!nav) return;
+    nav.innerHTML = LINKS.map(function (l) {
+      const isActive = l[0] === active;
+      const locked = LOCKED.has(l[0].replace(/\/$/, '').slice(1));
+      const cls = 'flex items-center justify-between px-4 py-2.5 rounded-lg text-sm font-semibold transition '
+        + (isActive
+          ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/30'
+          : 'text-slate-300 hover:bg-slate-800 hover:text-white');
+      return '<a href="' + l[0] + '" class="' + cls + '">'
+        + '<span>' + l[1] + '</span>'
+        + (locked ? '<span class="page-lock text-xs opacity-60">\uD83D\uDD12</span>' : '')
+        + '</a>';
+    }).join('');
+    const btn = document.getElementById('nav-toggle');
+    if (btn) btn.addEventListener('click', function () { nav.classList.toggle('hidden'); });
+  })();
+  </script>
+
 
     <!-- Auth Lock Overlay -->
     <div id="auth-lock" class="hidden fixed inset-0 z-40 bg-slate-950/95 backdrop-blur flex items-center justify-center p-4">
@@ -199,6 +231,8 @@
       </button>
     </div>
   </div>
+
+  <!-- MODALS END -->
 
   <script>
     let currentConfig = null;
@@ -1250,356 +1284,1062 @@
         if (img) img.src = '/api/screen.png?t=' + Date.now();
       }, 30000);
     })();
-  
   </script>
   <script>
-    async function loadTelemetry() {
+    let currentConfig = null;
+    let selectedPlaylistKey = "main";
+    let isAuthenticated = false;
+    let setupRequired = false;
+    const weatherMaps = {};
+
+    // Pull the one-time claim token out of the URL and POST it to
+    // /api/onboarding/claim so the device is actually marked claimed. The
+    // claim URL only carries the token in the fragment/query (browsers never
+    // send either to the server), so we have to consume it client-side.
+    async function consumeClaimFromUrl() {
+      let token = null;
+      const match = (window.location.search || window.location.hash).match(/[?&]claim=([^&]+)/);
+      if (match) token = decodeURIComponent(match[1]);
+      if (!token) return false;
       try {
-        const r = await fetch('/api/telemetry');
-        const t = await r.json();
-        const el = document.getElementById('telemetry-content');
-        if (!r.ok || t.error) {
-          el.innerHTML = `<div class="text-amber-400">Sign in to view device health${t.detail ? ' (HTTP ' + r.status + ': ' + t.detail + ')' : (t.error ? ' (' + t.error + ')' : (r.ok ? '' : ' (HTTP ' + r.status + ')'))}</div>`;
-          return;
-        }
-        const health = t.health === 'healthy' ? 'text-emerald-400' : 'text-rose-400';
-        const healthTxt = t.health || 'unknown';
-        el.innerHTML =
-          `<div>Health: <strong class="${health}">${healthTxt}</strong></div>` +
-          `<div>Uptime: ${t.uptime_human || '—'}</div>` +
-          `<div>Renders: ${t.render_count ?? '—'} · Errors: ${t.error_count ?? '—'}</div>` +
-          `<div>Last render: ${t.last_render_duration_ms != null ? t.last_render_duration_ms + 'ms' : '—'}</div>` +
-          (t.last_error ? `<div class="text-rose-400">⚠ ${t.last_error}</div>` : '');
-      } catch (e) { document.getElementById('telemetry-content').innerHTML = '<div class="text-amber-400">Monitoring unavailable: ' + (e && e.message ? e.message : 'network error') + '</div>'; }
-    }
-
-    async function checkUpdate() {
-      try {
-        const r = await fetch('/api/update/check');
-        const u = await r.json();
-        document.getElementById('update-content').innerHTML = u.error
-          ? `<div class="text-amber-400">Could not check for updates: ${u.error}</div>`
-          : u.update_available
-            ? `<div class="text-emerald-400">Update available: v${u.latest_version}</div>`
-            : `<div class="text-slate-300">You're on the latest version (v${u.current_version})</div>`;
-      } catch (e) { document.getElementById('update-content').innerHTML = '<div>Auth required</div>'; }
-    }
-
-    async function applyUpdate() {
-      const el = document.getElementById('update-content');
-      el.innerHTML = '<div class="text-sky-300">Checking update state…</div>';
-      try {
-        const r = await fetch('/api/update/apply', { method: 'POST' });
-        const resp = await r.json();
-        if (resp.status === 'in-progress') {
-          el.innerHTML = '<div class="text-amber-400">An update is already applying — wait for it to finish.</div>';
-          setTimeout(() => pollApplyStatus(el), 2000);
-          return;
-        }
-        if (resp.error) {
-          el.innerHTML = `<div class="text-rose-400">Update failed: ${resp.error}</div>`;
-          return;
-        }
-        el.innerHTML = '<div class="text-sky-300">Applying update (pip install --upgrade rndrsbc)… this can take a few minutes.</div>';
-        await pollApplyStatus(el);
-      } catch (e) { el.innerHTML = `<div class="text-rose-400">Update failed: ${e.message}</div>`; }
-    }
-
-    async function pollApplyStatus(el) {
-      for (let i = 0; i < 180; i++) {
-        try {
-          const s = await fetch('/api/update/apply-status');
-          const st = await s.json();
-          if (st.status === 'finished') {
-            el.innerHTML = st.success
-              ? '<div class="text-emerald-400">Update applied! Restarting…</div>'
-              : `<div class="text-rose-400">Update failed: ${st.error || 'unknown'}</div>`;
-            return;
-          }
-          el.innerHTML = `<div class="text-sky-300">Applying update… (${i * 2}s elapsed)</div>`;
-          await new Promise(res => setTimeout(res, 2000));
-        } catch (e) { el.innerHTML = `<div class="text-rose-400">Update failed: ${e.message}</div>`; return; }
-      }
-      el.innerHTML = '<div class="text-amber-400">Update still running — check again later.</div>';
-    }
-
-    async function uploadPhoto() {
-      const fileInput = document.getElementById('photo-upload');
-      if (!fileInput.files.length) return;
-      const fd = new FormData();
-      fd.append('file', fileInput.files[0]);
-      const r = await spinButton(document.getElementById('btn-upload-photo'),
-        fetch('/api/photos/upload', { method: 'POST', body: fd }),
-        'Uploading');
-      const resp = await r.json();
-      document.getElementById('photos-content').innerHTML = `<div class="text-emerald-400">${resp.path || resp.error || 'uploaded'} ${resp.error ? '(failed)' : ''}</div>`;
-      fileInput.value = '';
-      loadPhotos();
-    }
-
-    async function loadPhotos() {
-      const el = document.getElementById('photos-content');
-      try {
-        const r = await fetch('/api/photos');
-        const d = await r.json();
-        if (!r.ok || d.error) { el.innerHTML = `<div class="text-amber-400">Unable to load photos${d.error ? ': ' + d.error : ''}</div>`; return; }
-        const photos = d.photos || [];
-        if (!photos.length) { el.innerHTML = '<div class="text-slate-500">No photos yet — upload one above.</div>'; return; }
-        el.innerHTML = `<div class="photo-grid grid grid-cols-3 gap-2">` +
-          photos.map((p) =>
-            `<div class="relative group rounded-lg overflow-hidden border border-slate-800 bg-slate-900">` +
-              `<img src="/api/photos/file?path=${encodeURIComponent(p.path || '')}" alt="${(p.name || '').replace(/"/g, '&quot;')}" class="w-full h-24 object-cover" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\'p-2 text-[10px] text-slate-500\'>unavailable</div>'">` +
-              `<div class="px-1.5 py-1 text-[9px] text-slate-400 truncate" title="${(p.path || '').replace(/"/g, '&quot;')}">${p.name}${p.album ? ' · ' + p.album : ''}${p.width ? ' · ' + p.width + '×' + p.height : ''}</div>` +
-              `<button onclick="deletePhoto('${(p.path || '').replace(/'/g, "\\'")}')" class="absolute top-1 right-1 text-[9px] px-1.5 py-0.5 rounded bg-rose-950/90 text-rose-300 opacity-0 group-hover:opacity-100 hover:bg-rose-900 border border-rose-800">Delete</button>` +
-            `</div>`
-          ).join('') + `</div>`;
-      } catch (e) { el.innerHTML = '<div class="text-amber-400">Photo library unavailable</div>'; }
-    }
-
-    async function deletePhoto(path) {
-      if (!confirm('Delete this photo?\n' + path)) return;
-      const r = await fetch('/api/photos/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path: path }) });
-      const d = await r.json().catch(() => ({}));
-      document.getElementById('photos-content').innerHTML = `<div class="${r.ok ? 'text-emerald-400' : 'text-rose-400'}">${d.message || d.error || 'done'}</div>`;
-      loadPhotos();
-    }
-
-    function exportConfigBackup() {
-      if (!currentConfig) return;
-      const blob = new Blob([JSON.stringify(currentConfig, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `rndrsbc-config-backup-${new Date().toISOString().slice(0,10)}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    function importConfigBackup(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const imported = JSON.parse(e.target.result);
-          if (!imported || typeof imported !== 'object') throw new Error('Invalid JSON');
-          if (!confirm('Restore configuration from this backup? All current settings will be replaced.')) return;
-          currentConfig = imported;
-          await saveAndApply();
-          alert('Configuration restored and applied successfully!');
-          window.location.reload();
-        } catch (err) {
-          alert('Failed to import configuration: ' + err.message);
-        }
-      };
-      reader.readAsText(file);
-      event.target.value = '';
-    }
-
-    async function triggerPanelClean() {
-      if (!confirm('Run full anti-ghosting panel clean cycle now?')) return;
-      try {
-        const res = await fetch('/api/panel/clean', { method: 'POST' });
-        const data = await res.json().catch(() => ({}));
-        if (res.ok) {
-          alert('Clean cycle scheduled. The display will refresh shortly.');
-          setTimeout(refreshDisplayNow, 1500);
-        } else {
-          alert('Failed: ' + (data.error || 'Unknown error'));
-        }
-      } catch (e) {
-        alert('Network error triggering clean cycle: ' + e.message);
-      }
-    }
-
-    async function systemAction(action) {
-      const labels = { restart: 'Restart rndrSBC background daemon', reboot: 'Reboot Raspberry Pi hardware', shutdown: 'Power off system completely' };
-      if (!confirm(`Are you sure you want to ${labels[action] || action}?`)) return;
-      try {
-        const res = await fetch(`/api/system/${action}`, { method: 'POST' });
-        if (res.ok) {
-          alert(`Command sent: ${labels[action]}. The system is processing.`);
-        } else {
-          const data = await res.json().catch(() => ({}));
-          alert(`Failed: ${data.error || 'Server error'}`);
-        }
-      } catch (e) {
-        alert('Network error: ' + e.message);
-      }
-    }
-
-    // ---------- Dev Studio ----------
-    let DS_SCHEMAS = {};
-
-    async function devStudioInit() {
-      try {
-        const res = await fetch('/api/dev-studio/widgets');
-        if (!res.ok) return;
-        const data = await res.json();
-        const sel = document.getElementById('ds-widget');
-        if (!sel) return;
-        sel.innerHTML = '';
-        (data.widgets || []).forEach(w => {
-          const o = document.createElement('option');
-          o.value = w.name;
-          o.textContent = w.name;
-          DS_SCHEMAS[w.name] = w.schema || [];
-          sel.appendChild(o);
+        const res = await fetch('/api/onboarding/claim', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({token})
         });
-        dsRebuildSettings();
-        dsRender();
-      } catch (e) { /* quiet */ }
-    }
-
-    function devStudioRefresh() {
-      DS_SCHEMAS = {};
-      devStudioInit();
-    }
-
-    // Render a simple settings field from a widget schema entry (best-effort).
-    function _dsField(f) {
-      const kind = (f.type && f.type.kind) || 'string';
-      const id = 'ds_set_' + f.name;
-      if (kind === 'boolean') {
-        return '<label class="flex items-center justify-between text-xs text-slate-300"><span>' + f.name +
-               '</span><input id="' + id + '" type="checkbox" onclick="dsRender()" class="accent-orange-500"></label>';
-      }
-      if (kind === 'enum' && Array.isArray(f.type.values)) {
-        let opts = f.type.values.map(v => '<option value="' + v + '">' + v + '</option>').join('');
-        return '<label class="block text-xs text-slate-300"><span class="text-[11px] font-bold text-slate-400 uppercase">' + f.name +
-               '</span><select id="' + id + '" onchange="dsRender()" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-100">' + opts + '</select></label>';
-      }
-      return '<label class="block text-xs text-slate-300"><span class="text-[11px] font-bold text-slate-400 uppercase">' + f.name +
-             '</span><input id="' + id + '" type="text" oninput="dsDebounced()" class="mt-1 w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-sm text-slate-100" placeholder="' + (f.name) + '"></label>';
-    }
-
-    let _dsDebounce = null;
-    function dsDebounced() {
-      clearTimeout(_dsDebounce);
-      _dsDebounce = setTimeout(dsRender, 400);
-    }
-
-    function dsRebuildSettings() {
-      const sel = document.getElementById('ds-widget');
-      const holder = document.getElementById('ds-settings');
-      const name = sel ? sel.value : '';
-      if (!holder) return;
-      holder.innerHTML = '';
-      const schema = DS_SCHEMAS[name] || [];
-      if (schema.length) {
-        const box = document.createElement('div');
-        box.className = 'space-y-2 border-t border-slate-800 pt-3 mt-1';
-        box.innerHTML = schema.map(_dsField).join('');
-        holder.appendChild(box);
-      }
-    }
-
-    async function dsRender() {
-      const st = document.getElementById('ds-status');
-      const img = document.getElementById('ds-preview');
-      const empty = document.getElementById('ds-preview-empty');
-      const sel = document.getElementById('ds-widget');
-      if (!sel || !sel.value) return;
-      const w = Math.max(16, Math.min(1600, parseInt(document.getElementById('ds-w').value || '800', 10) || 800));
-      const h = Math.max(16, Math.min(1600, parseInt(document.getElementById('ds-h').value || '480', 10) || 480));
-      const color = document.getElementById('ds-color').value;
-      const dither = document.getElementById('ds-dither').value;
-
-      // Collect settings fields.
-      const settings = {};
-      (DS_SCHEMAS[sel.value] || []).forEach(f => {
-        const el = document.getElementById('ds_set_' + f.name);
-        if (!el) return;
-        if (f.type && f.type.kind === 'boolean') settings[f.name] = el.checked;
-        else if (el.value !== undefined && el.value !== '') {
-          if (f.type && f.type.kind === 'number') settings[f.name] = Number(el.value);
-          else settings[f.name] = el.value;
+        if (res.ok) {
+          // Claimed. Drop the token from the URL so a refresh/re-share does not
+          // attempt to re-consume an already-used token.
+          history.replaceState({}, '', window.location.pathname + window.location.search.replace(/[?&]claim=[^&]+/, ''));
+          return true;
         }
-      });
+      } catch (e) { /* network error; fall through to normal setup flow */ }
+      return false;
+    }
 
-      if (st) st.textContent = 'Rendering…';
-      const params = new URLSearchParams({ w, h, widget: sel.value, color, dither, settings: JSON.stringify(settings) });
+    async function checkAuthStatus() {
       try {
-        const res = await fetch('/api/dev-studio/render?' + params.toString());
-        if (!res.ok) {
-          const d = await res.json().catch(() => ({}));
-          if (st) st.textContent = (d.error || 'Render failed');
-          if (img) img.style.display = 'none';
-          if (empty) empty.style.display = '';
-          return;
-        }
-        const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        img.src = url;
-        img.style.display = '';
-        if (empty) empty.style.display = 'none';
-        if (st) st.textContent = w + '×' + h + ' · ' + color;
-      } catch (e) {
-        if (st) st.textContent = 'Network error';
-      }
-    }
-
-    // ---------- Section tabs ----------
-
-    // ---------- Widget Finder catalogue ----------
-    let WF_WIDGETS = [];
-    async function wfLoad() {
-      const grid = document.getElementById('wf-grid');
-      if (!grid) return;
-      grid.innerHTML = '<div class="text-xs text-slate-500">Loading widget catalogue…</div>';
-      try {
-        const res = await fetch('/api/dev-studio/widgets');
-        if (!res.ok) {
-          grid.innerHTML = '<div class="text-xs text-rose-400">Failed to load catalogue</div>';
-          return;
-        }
+        const res = await fetch('/api/auth/status');
         const data = await res.json();
-        WF_WIDGETS = data.widgets || [];
-        wfRender();
+        if (data.setup_required) {
+          setupRequired = true;
+          document.getElementById('modal-setup').classList.remove('hidden');
+          return false;
+        }
+        setupRequired = false;
+        isAuthenticated = data.authenticated;
+        const lo = document.getElementById('btn-logout');
+        const li = document.getElementById('btn-login');
+        if (lo) lo.classList.toggle('hidden', isAuthenticated);
+        if (li) li.classList.toggle('hidden', !isAuthenticated);
+        return isAuthenticated;
       } catch (e) {
-        grid.innerHTML = '<div class="text-xs text-rose-400">Network error</div>';
+        return false;
       }
     }
 
-    function wfRender() {
-      const grid = document.getElementById('wf-grid');
-      const q = (document.getElementById('wf-search').value || '').trim().toLowerCase();
-      if (!grid) return;
-      const list = WF_WIDGETS.filter(w => !q || w.name.toLowerCase().includes(q));
-      if (!list.length) {
-        grid.innerHTML = '<div class="text-xs text-slate-500 col-span-full">No widgets match “' + q + '”.</div>';
+    // Generic "saving…" animation: disables the button and swaps its
+    // content for a spinner + busyLabel while awaitable runs, then restores
+    // the original label. Original child nodes are saved so the exact markup
+    // (icons, etc.) comes back unchanged.
+    async function spinButton(btn, awaitable, busyLabel) {
+      if (!btn) return await awaitable;
+      const original = [...btn.childNodes];
+      const busyText = (busyLabel || 'Saving') + '…';
+      btn.disabled = true;
+      btn.classList.add('btn-busy');
+      btn.innerHTML = '<span class="btn-spinner"></span><span>' + busyText + '</span>';
+      try {
+        return await awaitable;
+      } finally {
+        btn.disabled = false;
+        btn.classList.remove('btn-busy');
+        btn.replaceChildren(...original);
+      }
+    }
+
+    async function submitSetup() {
+      const p1 = document.getElementById('setup-pwd').value;
+      const p2 = document.getElementById('setup-pwd-confirm').value;
+      const err = document.getElementById('setup-err');
+
+      if (p1.length < 8) {
+        err.textContent = "Password must be at least 8 characters long.";
+        err.classList.remove('hidden');
         return;
       }
-      grid.innerHTML = list.map(w => {
-        const fields = (w.schema && w.schema.fields) ? w.schema.fields : [];
-        const fieldList = fields.slice(0, 5).map(f =>
-          '<span class="inline-block text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">' + f.name +
-          '<span class="text-slate-500">:' + (f.type && f.type.kind || '?') + '</span></span>'
-        ).join(' ') + (fields.length > 5 ? ' <span class="text-[10px] text-slate-500">+' + (fields.length - 5) + ' more</span>' : '');
-        return '<div class="bg-slate-950/60 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">' +
-          '<div class="flex items-center justify-between mb-1">' +
-            '<div class="font-mono text-sm text-slate-100">' + w.name + '</div>' +
-            '<button onclick="dsSelectWidget(\'' + w.name + '\')" class="text-[11px] px-2 py-1 rounded bg-orange-600/20 hover:bg-orange-600/40 text-orange-300 border border-orange-600/40 font-semibold transition">Preview</button>' +
-          '</div>' +
-          '<div class="text-[11px] text-slate-500 mb-2">' + (fields.length ? fields.length + ' settings' : 'no settings') + '</div>' +
-          '<div class="flex flex-wrap gap-1">' + fieldList + '</div>' +
-        '</div>';
-      }).join('');
-    }
+      if (p1 !== p2) {
+        err.textContent = "Passwords do not match.";
+        err.classList.remove('hidden');
+        return;
+      }
 
-    function dsSelectWidget(name) {
-      const sel = document.getElementById('ds-widget');
-      if (sel && sel.querySelector('option[value="' + name + '"]')) {
-        sel.value = name;
-        dsRebuildSettings();
-        window.location.href = '/widgets';
-        dsRender();
+      const res = await spinButton(document.getElementById('btn-setup'),
+        fetch('/api/setup', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({password: p1})
+        }));
+
+      if (res.ok) {
+        document.getElementById('modal-setup').classList.add('hidden');
+        // The setup password is now the admin password; log straight in so the
+        // freshly-authenticated session can load the dashboard without a second
+        // login prompt.
+        const loginRes = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({password: p1})
+        });
+        hideLoginModal();
+        await checkAuthStatus();
+        await loadStatus();
+      } else {
+        const data = await res.json();
+        err.textContent = data.error || "Setup failed.";
+        err.classList.remove('hidden');
       }
     }
-  
+
+    function showLoginModal() { document.getElementById('modal-login').classList.remove('hidden'); }
+    function hideLoginModal() { document.getElementById('modal-login').classList.add('hidden'); }
+
+    async function loadOnboardingState(idx) {
+      try {
+        const res = await fetch('/api/onboarding/status');
+        const st = await res.json();
+        const el = document.getElementById(`onboarding-token-${idx}`);
+        if (el) el.textContent = st.token ? st.token.slice(0, 12) + '…' : '(generate on display refresh)';
+      } catch (e) {}
+    }
+
+    async function submitLogin() {
+      const pwd = document.getElementById('login-pwd').value;
+      const err = document.getElementById('login-err');
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({password: pwd})
+      });
+
+      if (res.ok) {
+        hideLoginModal();
+        await checkAuthStatus();
+        await loadStatus();
+        // Re-fetch the auth-gated panels now that we have a session.
+        await Promise.allSettled([loadTelemetry(), loadPhotos(), checkUpdate()]);
+        // Stay on the page the user was on when they logged in; unlock the
+        // auth-lock overlay and load that page's panels for this session.
+        const lock = document.getElementById('auth-lock');
+        if (lock) lock.classList.add('hidden');
+        if (setupRequired) setupRequired = false;
+        if (window.location.pathname === '/playlists') {
+          try { renderPlaylistTabs(); renderPlaylist(); } catch (e) {}
+        } else if (window.location.pathname === '/widgets') {
+          try { devStudioInit(); } catch (e) {}
+        } else if (window.location.pathname === '/settings') {
+          try { buildTimezoneSelect(); updateHardwareSettings(); updateQuietHoursSettings(); updateDeviceSettings(); } catch (e) {}
+        } else if (window.location.pathname === '/photos') {
+          try { loadPhotos(); } catch (e) {}
+        } else if (window.location.pathname === '/system') {
+          try { loadTelemetry(); checkUpdate(); } catch (e) {}
+        } else {
+          try { await loadStatus(); renderPlaylistTabs(); } catch (e) {}
+        }
+      } else {
+        err.textContent = "Invalid administrator password.";
+        err.classList.remove('hidden');
+      }
+    }
+
+    async function logout() {
+      await fetch('/api/auth/logout', {method: 'POST'});
+      isAuthenticated = false;
+      const lock = document.getElementById('auth-lock');
+      if (lock) lock.classList.remove('hidden');
+      const path = window.location.pathname;
+      if (path === '/') { window.location.href = '/'; }
+    }
+
+    async function updatePassword() {
+      const cur = document.getElementById('pwd-current').value;
+      const p1 = document.getElementById('pwd-new').value;
+      const p2 = document.getElementById('pwd-new-confirm').value;
+      const fb = document.getElementById('pwd-feedback');
+
+      if (!p1 || p1.length < 8) {
+        fb.textContent = "New password must be at least 8 characters long.";
+        fb.className = "text-xs text-rose-400 font-medium";
+        fb.classList.remove('hidden');
+        return;
+      }
+      if (p1 !== p2) {
+        fb.textContent = "New passwords do not match.";
+        fb.className = "text-xs text-rose-400 font-medium";
+        fb.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        const res = await spinButton(document.getElementById('btn-save-pwd'),
+          fetch('/api/auth/password', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({current_password: cur, new_password: p1})
+          }),
+          'Saving');
+        const data = await res.json();
+        if (res.ok) {
+          fb.textContent = "Admin password updated successfully!";
+          fb.className = "text-xs text-emerald-400 font-medium";
+          fb.classList.remove('hidden');
+          document.getElementById('pwd-current').value = '';
+          document.getElementById('pwd-new').value = '';
+          document.getElementById('pwd-new-confirm').value = '';
+          checkAuthStatus();
+        } else {
+          fb.textContent = data.error || "Failed to update password.";
+          fb.className = "text-xs text-rose-400 font-medium";
+          fb.classList.remove('hidden');
+        }
+      } catch (e) {
+        fb.textContent = "Network error updating password.";
+        fb.className = "text-xs text-rose-400 font-medium";
+        fb.classList.remove('hidden');
+      }
+    }
+
+    async function loadStatus() {
+      try {
+        const res = await fetch('/api/config');
+        currentConfig = await res.json();
+        
+        if (!currentConfig.playlists) {
+          const oldItems = currentConfig.playlist || [];
+          currentConfig.playlists = {
+            "main": { name: "Main Rotation", items: oldItems }
+          };
+          currentConfig.active_playlist = "main";
+        }
+
+        selectedPlaylistKey = currentConfig.active_playlist || Object.keys(currentConfig.playlists)[0] || "main";
+
+        if (currentConfig.display) {
+          document.getElementById('cfg-driver').value = currentConfig.display.driver || 'virtual';
+          document.getElementById('cfg-model').value = currentConfig.display.model || 'epd7in3f';
+          document.getElementById('cfg-orient').value = currentConfig.display.orientation || 0;
+          document.getElementById('cfg-saturation').value = currentConfig.display.saturation ?? 0.5;
+        }
+
+        if (currentConfig.quiet_hours) {
+          document.getElementById('cfg-qh-enabled').checked = !!currentConfig.quiet_hours.enabled;
+          document.getElementById('cfg-qh-start').value = currentConfig.quiet_hours.start || '23:00';
+          document.getElementById('cfg-qh-end').value = currentConfig.quiet_hours.end || '06:00';
+        }
+
+        if (currentConfig.device) {
+          document.getElementById('cfg-timezone').value = currentConfig.device.timezone || 'America/New_York';
+          document.getElementById('cfg-device-name').value = currentConfig.device.name || 'rndrSBC Node';
+        }
+        document.getElementById('cfg-transition').value = currentConfig.transition || 'cut';
+        document.getElementById('cfg-language').value = (currentConfig.language || 'en').split('-')[0];
+        document.getElementById('cfg-refresh-mode').value = currentConfig.refresh_mode || 'auto';
+
+        if (document.getElementById('playlist-tabs')) {
+          renderPlaylistTabs();
+          renderPlaylist();
+        }
+      } catch (err) {
+        console.error("Failed to load config:", err);
+      }
+    }
+
+    function buildTimezoneSelect() {
+      // Comprehensive IANA timezone list, grouped by geographic region, rendered
+      // as a true native <select> drop-down (not a free-text field).
+      const zones = [
+        ['Africa', ['Abidjan','Accra','Addis_Ababa','Algiers','Cairo','Cape_Town','Casablanca','Johannesburg','Kampala','Khartoum','Lagos','Nairobi','Tripoli']],
+        ['America', ['Anchorage','Argentina/Buenos_Aires','Asuncion','Atikokan','Bogota','Caracas','Chicago','Costa_Rica','Denver','Detroit','El_Salvador','Guatemala','Halifax','Indianapolis','Juneau','La_Paz','Lima','Los_Angeles','Managua','Mexico_City','Monterrey','Montreal','New_York','Phoenix','Port-au-Prince','Regina','Santiago','Sao_Paulo','Tijuana','Toronto','Vancouver','Winnipeg']],
+        ['Asia', ['Almaty','Amman','Ashgabat','Baghdad','Baku','Bangkok','Beirut','Dhaka','Dubai','Hong_Kong','Irkutsk','Jakarta','Jerusalem','Kabul','Karachi','Kathmandu','Kolkata','Krasnoyarsk','Kuala_Lumpur','Manila','Muscat','Riyadh','Seoul','Shanghai','Singapore','Taipei','Tashkent','Tehran','Tel_Aviv','Tokyo','Ulaanbaatar']],
+        ['Atlantic', ['Azores','Bermuda','Canary','Cape_Verde','Faroe','Madeira']],
+        ['Australia', ['Adelaide','Brisbane','Darwin','Hobart','Melbourne','Perth','Sydney']],
+        ['Europe', ['Amsterdam','Athens','Belgrade','Berlin','Bern','Brussels','Bucharest','Budapest','Chisinau','Copenhagen','Dublin','Helsinki','Istanbul','Kyiv','Lisbon','Ljubljana','London','Madrid','Minsk','Moscow','Oslo','Paris','Prague','Reykjavik','Rome','Sarajevo','Skopje','Sofia','Stockholm','Tallinn','Vienna','Warsaw','Zagreb','Zurich']],
+        ['Indian', ['Chagos','Christmas','Cocos','Maldives','Mauritius','Reunion']],
+        ['Pacific', ['Apia','Auckland','Chatham','Chuuk','Easter','Efate','Fakaofo','Fiji','Guadalcanal','Guam','Honolulu','Kiritimati','Majuro','Midway','Noumea','Pago_Pago','Palau','Port_Moresby','Tarawa','Tongatapu','Wake']]
+      ];
+      const sel = document.getElementById('cfg-timezone');
+      if (!sel) return;  // timezone select only exists on /settings
+      sel.innerHTML = '';
+      zones.forEach(([group, list]) => {
+        const og = document.createElement('optgroup');
+        og.label = group;
+        list.forEach(z => {
+          const o = document.createElement('option');
+          o.value = `${group}/${z}`;
+          o.textContent = `${group}/${z.replace(/_/g, ' ')}`;
+          og.appendChild(o);
+        });
+        sel.appendChild(og);
+      });
+      ['UTC','UTC+01:00','UTC+02:00','UTC+03:00','UTC+04:00','UTC+05:00','UTC+05:30','UTC+06:00','UTC+07:00','UTC+08:00','UTC+09:00','UTC+10:00','UTC-01:00','UTC-02:00','UTC-03:00','UTC-04:00','UTC-05:00','UTC-06:00','UTC-07:00','UTC-08:00','UTC-09:00','UTC-10:00'].forEach(z => {
+        const o = document.createElement('option');
+        o.value = z;
+        o.textContent = z;
+        sel.appendChild(o);
+      });
+    }
+
+    // Populate the timezone menu once at page load; its value is filled in by
+    // updateConfigUI below when the saved config arrives.
+    buildTimezoneSelect();
+
+    function renderPlaylistTabs() {
+      const tabsEl = document.getElementById('playlist-tabs');
+      tabsEl.innerHTML = '';
+      const playlists = currentConfig.playlists || {};
+      const activeKey = currentConfig.active_playlist || 'main';
+
+      for (const [key, pl] of Object.entries(playlists)) {
+        const isSelected = (key === selectedPlaylistKey);
+        const isActive = (key === activeKey);
+
+        const btn = document.createElement('button');
+        btn.className = `px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition ${
+          isSelected 
+            ? 'bg-orange-600 text-white shadow-md shadow-orange-600/20' 
+            : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700'
+        }`;
+        
+        btn.innerHTML = `
+          <span>${pl.name || key}</span>
+          ${isActive ? '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>' : ''}
+        `;
+        btn.onclick = () => selectPlaylistTab(key);
+        tabsEl.appendChild(btn);
+      }
+
+      const curPl = playlists[selectedPlaylistKey] || { name: selectedPlaylistKey, items: [] };
+      document.getElementById('current-tab-name').textContent = curPl.name || selectedPlaylistKey;
+      
+      const isCurActive = (selectedPlaylistKey === activeKey);
+      document.getElementById('active-badge').classList.toggle('hidden', !isCurActive);
+      document.getElementById('btn-set-active').classList.toggle('hidden', isCurActive);
+      
+      const canDelete = Object.keys(playlists).length > 1;
+      document.getElementById('btn-del-playlist').classList.toggle('hidden', !canDelete);
+    }
+
+    function selectPlaylistTab(key) {
+      selectedPlaylistKey = key;
+      renderPlaylistTabs();
+      renderPlaylist();
+    }
+
+    function promptCreatePlaylist() {
+      const name = prompt("Enter a name for the new rotation playlist:", "Weekend Schedule");
+      if (!name) return;
+      const key = "pl_" + Date.now();
+      if (!currentConfig.playlists) currentConfig.playlists = {};
+      currentConfig.playlists[key] = {
+        name: name,
+        items: [
+          { widget: "weather", duration_minutes: 15, settings: { location: "New York City", latitude: 40.7128, longitude: -74.0060, units: "imperial", frame: "None" } }
+        ]
+      };
+      selectedPlaylistKey = key;
+      renderPlaylistTabs();
+      renderPlaylist();
+    }
+
+    function setActivePlaylist() {
+      currentConfig.active_playlist = selectedPlaylistKey;
+      renderPlaylistTabs();
+    }
+
+    function deleteCurrentPlaylist() {
+      const playlists = currentConfig.playlists || {};
+      if (Object.keys(playlists).length <= 1) return;
+      if (!confirm(`Delete playlist '${playlists[selectedPlaylistKey]?.name || selectedPlaylistKey}'?`)) return;
+
+      delete currentConfig.playlists[selectedPlaylistKey];
+      if (currentConfig.active_playlist === selectedPlaylistKey) {
+        currentConfig.active_playlist = Object.keys(currentConfig.playlists)[0];
+      }
+      selectedPlaylistKey = Object.keys(currentConfig.playlists)[0];
+      renderPlaylistTabs();
+      renderPlaylist();
+    }
+
+    function toggleAddDropdown() {
+      document.getElementById('add-dropdown-menu').classList.toggle('hidden');
+    }
+
+    document.addEventListener('click', (e) => {
+      const drop = document.getElementById('add-dropdown-menu');
+      if (drop && !e.target.closest('.relative')) {
+        drop.classList.add('hidden');
+      }
+    });
+
+    function addWidgetToPlaylist(widgetType) {
+      toggleAddDropdown();
+      const pl = currentConfig.playlists[selectedPlaylistKey];
+      if (!pl) return;
+      if (!pl.items) pl.items = [];
+
+      let newWidget = {
+        widget: widgetType,
+        duration_minutes: 15,
+        settings: { frame: "None" }
+      };
+
+      if (widgetType === "weather") {
+        newWidget.settings = { location: "New York City", latitude: 40.7128, longitude: -74.0060, units: "imperial", frame: "None", layout: "quadrant", weatherProvider: "OpenMeteo", displayGraph: true, moonPhase: true, graphIconStep: 3, time_format: "12h" };
+      } else if (widgetType === "clock") {
+        newWidget.settings = { style: "digital", time_format: "12h", show_date: true, frame: "None" };
+      } else if (widgetType === "calendar") {
+        newWidget.settings = { title: "My Schedule", ics_url: "", first_day_sunday: true, frame: "None" };
+      } else if (widgetType === "news") {
+        newWidget.settings = { feed_source: "BBC World News", custom_url: "", max_stories: 4, frame: "None" };
+      } else if (widgetType === "quotes") {
+        newWidget.settings = { category: "Inspirational", custom_quote: "", custom_author: "", frame: "None" };
+      } else if (widgetType === "crypto") {
+        newWidget.settings = { currency: "USD ($)", coins: "bitcoin,ethereum,solana", frame: "None" };
+      } else if (widgetType === "system_stats") {
+        newWidget.settings = { hostname: "rndrSBC Node", frame: "None" };
+      } else if (widgetType === "onboarding") {
+        newWidget.settings = { title: "Let's set up your display", frame: "None" };
+      } else if (widgetType === "photo_frame") {
+        newWidget.settings = { caption: true, mode: "sequential", scale_mode: "cover", frame: "None" };
+      } else if (widgetType === "composite_grid") {
+        newWidget.settings = { layout_type: "sidebar_right", gap: 8, zones: {}, frame: "None" };
+      } else if (widgetType === "network") {
+        newWidget.settings = { frame: "None" };
+      }
+
+      pl.items.push(newWidget);
+      renderPlaylist();
+    }
+
+    function renderPlaylist() {
+      for (const k in weatherMaps) {
+        if (weatherMaps[k]) {
+          try { weatherMaps[k].remove(); } catch(e) {}
+          delete weatherMaps[k];
+        }
+      }
+
+      const container = document.getElementById('playlist-container');
+      container.innerHTML = '';
+      const pl = currentConfig.playlists[selectedPlaylistKey] || { items: [] };
+      const items = pl.items || [];
+
+      document.getElementById('playlist-item-count').textContent = `(${items.length} widget${items.length === 1 ? '' : 's'} configured)`;
+
+      let totalMins = 0;
+      items.forEach((item) => { totalMins += parseInt(item.duration_minutes || 15); });
+      document.getElementById('total-playlist-duration').textContent = `${totalMins} mins`;
+
+      items.forEach((item, idx) => {
+        const card = buildWidgetCard(item, idx, items.length);
+        container.appendChild(card);
+      });
+    }
+
+    // ---- Drag & drop playlist reordering ----
+    let _dragFromIdx = null;
+    function onWidgetDragStart(ev, idx) {
+      _dragFromIdx = idx;
+      ev.dataTransfer.effectAllowed = 'move';
+      try { ev.dataTransfer.setData('text/plain', String(idx)); } catch (e) {}
+      ev.currentTarget.classList.add('opacity-40');
+    }
+    function onWidgetDragOver(ev, idx) {
+      if (_dragFromIdx === null || _dragFromIdx === idx) return;
+      ev.preventDefault();
+      ev.dataTransfer.dropEffect = 'move';
+    }
+    function onWidgetDrop(ev, idx) {
+      ev.preventDefault();
+      const from = _dragFromIdx;
+      _dragFromIdx = null;
+      if (from === null || from === idx) return;
+      reorderWidget(from, idx);
+    }
+    function onWidgetDragEnd(ev) {
+      ev.currentTarget.classList.remove('opacity-40');
+      _dragFromIdx = null;
+    }
+    function reorderWidget(fromIdx, toIdx) {
+      const pl = currentConfig.playlists[selectedPlaylistKey] || { items: [] };
+      const items = pl.items || [];
+      if (fromIdx < 0 || fromIdx >= items.length || toIdx < 0 || toIdx >= items.length) return;
+      const [moved] = items.splice(fromIdx, 1);
+      items.splice(toIdx, 0, moved);
+      renderPlaylist();
+    }
+
+    function buildWidgetCard(item, idx, total) {
+      const card = document.createElement('div');
+      card.className = "bg-slate-950/70 border border-slate-800 rounded-xl p-4 transition space-y-3";
+
+      let settingsFieldsHTML = '';
+      const s = item.settings || {};
+
+      if (item.widget === 'weather') {
+        const lat = s.latitude || 40.7128;
+        const lon = s.longitude || -74.0060;
+        const locName = s.location || 'New York City';
+        const titleOverride = s.title || '';
+        const isOWM = s.weatherProvider === 'OpenWeatherMap';
+
+        settingsFieldsHTML = `
+          <div class="space-y-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Search City / Location</label>
+              <div class="relative">
+                <input type="text" id="loc-search-${idx}" placeholder="Type city or landmark to search..." oninput="searchLocation(${idx}, this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+                <div id="search-results-${idx}" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl max-h-48 overflow-y-auto z-50 divide-y divide-slate-800 text-xs"></div>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Location (resolved)</label>
+                <input type="text" id="w-loc-${idx}" value="${locName}" readonly class="w-full bg-slate-900 border border-slate-700/60 rounded-lg px-3 py-1.5 text-xs text-slate-400 cursor-not-allowed select-all" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Title Override (optional)</label>
+                <input type="text" value="${titleOverride}" placeholder="Overrides location header on display" onchange="updateSetting(${idx}, 'title', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Latitude</label>
+                <input type="number" step="0.0001" id="w-lat-${idx}" value="${lat}" onchange="updateSettingFromMap(${idx}, 'latitude', parseFloat(this.value))" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Longitude</label>
+                <input type="number" step="0.0001" id="w-lon-${idx}" value="${lon}" onchange="updateSettingFromMap(${idx}, 'longitude', parseFloat(this.value))" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Units</label>
+                <select onchange="updateSetting(${idx}, 'units', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                  <option value="imperial" ${s.units === 'imperial' ? 'selected' : ''}>Imperial (°F, mph)</option>
+                  <option value="metric" ${s.units === 'metric' ? 'selected' : ''}>Metric (°C, m/s)</option>
+                  <option value="standard" ${s.units === 'standard' ? 'selected' : ''}>Standard (Kelvin)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Provider & Options -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Weather Provider</label>
+                <select onchange="updateSetting(${idx}, 'weatherProvider', this.value); toggleWeatherKey(${idx}, this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                  <option value="OpenMeteo" ${s.weatherProvider !== 'OpenWeatherMap' ? 'selected' : ''}>Open-Meteo (Zero Key)</option>
+                  <option value="OpenWeatherMap" ${s.weatherProvider === 'OpenWeatherMap' ? 'selected' : ''}>OpenWeatherMap (API Key)</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Time Format</label>
+                <select onchange="updateSetting(${idx}, 'time_format', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                  <option value="12h" ${s.time_format !== '24h' ? 'selected' : ''}>12-Hour (AM/PM)</option>
+                  <option value="24h" ${s.time_format === '24h' ? 'selected' : ''}>24-Hour</option>
+                </select>
+              </div>
+              <div id="w-key-box-${idx}" class="${isOWM ? '' : 'hidden'}">
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">OWM API Key</label>
+                <input type="password" value="${s.api_key || ''}" placeholder="32-char API Key" onchange="updateSetting(${idx}, 'api_key', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+              </div>
+            </div>
+
+            <!-- Display options grid (full InkyPi parity) -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-1">
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.displayGraph !== false ? 'checked' : ''} onchange="updateSetting(${idx}, 'displayGraph', this.checked)" class="rounded accent-orange-600" />
+                <span>Hourly Graph</span>
+              </label>
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.displayRefreshTime !== false ? 'checked' : ''} onchange="updateSetting(${idx}, 'displayRefreshTime', this.checked)" class="rounded accent-orange-600" />
+                <span>Refresh Time</span>
+              </label>
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.displayMetrics !== false ? 'checked' : ''} onchange="updateSetting(${idx}, 'displayMetrics', this.checked)" class="rounded accent-orange-600" />
+                <span>Metrics (Humidity/Wind)</span>
+              </label>
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.moonPhase ? 'checked' : ''} onchange="updateSetting(${idx}, 'moonPhase', this.checked)" class="rounded accent-orange-600" />
+                <span>Moon Phase</span>
+              </label>
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.displayRain ? 'checked' : ''} onchange="updateSetting(${idx}, 'displayRain', this.checked)" class="rounded accent-orange-600" />
+                <span>Rain Bars</span>
+              </label>
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.displayGraphIcons ? 'checked' : ''} onchange="updateSetting(${idx}, 'displayGraphIcons', this.checked)" class="rounded accent-orange-600" />
+                <span>Graph Hourly Icons</span>
+              </label>
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.displayForecast !== false ? 'checked' : ''} onchange="updateSetting(${idx}, 'displayForecast', this.checked)" class="rounded accent-orange-600" />
+                <span>7-Day Forecast</span>
+              </label>
+            </div>
+
+            <!-- Advanced: forecast days, icon step, title source, timezone -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Forecast Days</label>
+                <select onchange="updateSetting(${idx}, 'forecastDays', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                  <option value="3" ${s.forecastDays == '3' ? 'selected' : ''}>3 Days</option>
+                  <option value="5" ${s.forecastDays == '5' ? 'selected' : ''}>5 Days</option>
+                  <option value="7" ${s.forecastDays == '7' || !s.forecastDays ? 'selected' : ''}>7 Days</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Icon Step (hours)</label>
+                <select onchange="updateSetting(${idx}, 'graphIconStep', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                  ${['1','2','4','6','12'].map(v => `<option value="${v}" ${String(s.graphIconStep||6)===v ? 'selected' : ''}>Every ${v} hr${v>1?'s':''}</option>`).join('')}
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Title Source</label>
+                <select onchange="updateSetting(${idx}, 'titleSelection', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                  <option value="location" ${s.titleSelection !== 'custom' ? 'selected' : ''}>Resolve Location</option>
+                  <option value="custom" ${s.titleSelection === 'custom' ? 'selected' : ''}>Custom Title</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Time Zone</label>
+                <select onchange="updateSetting(${idx}, 'weatherTimeZone', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                  <option value="locationTimeZone" ${s.weatherTimeZone !== 'localTimeZone' ? 'selected' : ''}>Location Time Zone</option>
+                  <option value="localTimeZone" ${s.weatherTimeZone === 'localTimeZone' ? 'selected' : ''}>Device (Local)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Custom Title (Set Title Source to "Custom Title")</label>
+              <input type="text" value="${s.customTitle || ''}" placeholder="e.g. Home Forecourt, Grand Central" onchange="updateSetting(${idx}, 'customTitle', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+            </div>
+
+            <!-- Leaflet Interactive Map -->
+            <div>
+              <div class="flex items-center justify-between mb-1">
+                <label class="text-[11px] font-semibold text-slate-400">Map Pin (Drag marker to update coordinates)</label>
+              </div>
+              <div id="wmap-${idx}" class="w-full h-36 rounded-lg border border-slate-700 overflow-hidden bg-slate-900 z-0"></div>
+            </div>
+          </div>
+        `;
+        setTimeout(() => initWeatherMap(idx, lat, lon), 0);
+      } else if (item.widget === 'calendar') {
+        settingsFieldsHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Calendar Header Title</label>
+              <input type="text" value="${s.title || 'My Schedule'}" onchange="updateSetting(${idx}, 'title', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">First Day of Week</label>
+              <select onchange="updateSetting(${idx}, 'first_day_sunday', this.value === 'true')" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                <option value="true" ${s.first_day_sunday !== false ? 'selected' : ''}>Sunday</option>
+                <option value="false" ${s.first_day_sunday === false ? 'selected' : ''}>Monday</option>
+              </select>
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">iCal / Google Calendar URL (.ics)</label>
+              <input type="url" value="${s.ics_url || ''}" placeholder="https://calendar.google.com/calendar/ical/.../basic.ics" onchange="updateSetting(${idx}, 'ics_url', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+            </div>
+          </div>
+        `;
+      } else if (item.widget === 'clock') {
+        settingsFieldsHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Clock Style</label>
+              <select onchange="updateSetting(${idx}, 'style', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                <option value="digital" ${s.style !== 'analog' ? 'selected' : ''}>Digital Clock</option>
+                <option value="analog" ${s.style === 'analog' ? 'selected' : ''}>Analog Dial</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Time Format</label>
+              <select onchange="updateSetting(${idx}, 'time_format', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                <option value="12h" ${s.time_format !== '24h' ? 'selected' : ''}>12-Hour (AM/PM)</option>
+                <option value="24h" ${s.time_format === '24h' ? 'selected' : ''}>24-Hour</option>
+              </select>
+            </div>
+            <div class="flex items-center pt-5">
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.show_date !== false ? 'checked' : ''} onchange="updateSetting(${idx}, 'show_date', this.checked)" class="rounded accent-orange-600" />
+                <span>Show Date & Day</span>
+              </label>
+            </div>
+          </div>
+        `;
+      } else if (item.widget === 'news') {
+        settingsFieldsHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Feed Source Preset</label>
+              <select onchange="updateSetting(${idx}, 'feed_source', this.value); toggleNewsCustom(${idx}, this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                <option value="BBC World News" ${s.feed_source === 'BBC World News' ? 'selected' : ''}>BBC World News</option>
+                <option value="Hacker News" ${s.feed_source === 'Hacker News' ? 'selected' : ''}>Hacker News</option>
+                <option value="Reuters" ${s.feed_source === 'Reuters' ? 'selected' : ''}>Reuters</option>
+                <option value="New York Times" ${s.feed_source === 'New York Times' ? 'selected' : ''}>New York Times</option>
+                <option value="Custom URL" ${s.feed_source === 'Custom URL' ? 'selected' : ''}>Custom RSS / Atom URL</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Max Headlines</label>
+              <input type="number" min="1" max="8" value="${s.max_stories || 4}" onchange="updateSetting(${idx}, 'max_stories', parseInt(this.value))" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+            </div>
+            <div id="news-custom-${idx}" class="${s.feed_source === 'Custom URL' ? '' : 'hidden'} sm:col-span-3">
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Custom RSS / Atom Feed URL</label>
+              <input type="url" value="${s.custom_url || ''}" placeholder="https://example.com/feed.xml" onchange="updateSetting(${idx}, 'custom_url', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+            </div>
+          </div>
+        `;
+      } else if (item.widget === 'quotes') {
+        settingsFieldsHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Quote Style</label>
+              <select onchange="updateSetting(${idx}, 'category', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                <option value="Inspirational" ${s.category === 'Inspirational' ? 'selected' : ''}>Inspirational (ZenQuotes)</option>
+                <option value="Philosophy" ${s.category === 'Philosophy' ? 'selected' : ''}>Philosophy & Ideas</option>
+                <option value="Minimalist" ${s.category === 'Minimalist' ? 'selected' : ''}>Minimalist Quotes</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Custom Author (Optional)</label>
+              <input type="text" value="${s.custom_author || ''}" placeholder="Overrides attribution" onchange="updateSetting(${idx}, 'custom_author', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+            </div>
+            <div class="sm:col-span-2">
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Custom Quote Text (Overrides daily feed)</label>
+              <input type="text" value="${s.custom_quote || ''}" placeholder="Leave blank to use daily rotating quotes" onchange="updateSetting(${idx}, 'custom_quote', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+            </div>
+          </div>
+        `;
+      } else if (item.widget === 'crypto') {
+        settingsFieldsHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Display Currency</label>
+              <select onchange="updateSetting(${idx}, 'currency', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                <option value="USD ($)" ${s.currency !== 'EUR (€)' && s.currency !== 'GBP (£)' ? 'selected' : ''}>USD ($)</option>
+                <option value="EUR (€)" ${s.currency === 'EUR (€)' ? 'selected' : ''}>EUR (€)</option>
+                <option value="GBP (£)" ${s.currency === 'GBP (£)' ? 'selected' : ''}>GBP (£)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Tracked Coins (CoinGecko IDs)</label>
+              <input type="text" value="${s.coins || 'bitcoin,ethereum,solana'}" placeholder="e.g. bitcoin,ethereum,solana" onchange="updateSetting(${idx}, 'coins', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+            </div>
+          </div>
+        `;
+      } else if (item.widget === 'photo_frame') {
+        settingsFieldsHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Display Mode</label>
+              <select onchange="updateSetting(${idx}, 'mode', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                <option value="sequential" ${s.mode !== 'random' ? 'selected' : ''}>Sequential Rotation</option>
+                <option value="random" ${s.mode === 'random' ? 'selected' : ''}>Random / Shuffle</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Image Fit & Scale</label>
+              <select onchange="updateSetting(${idx}, 'scale_mode', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none">
+                <option value="cover" ${s.scale_mode !== 'contain' ? 'selected' : ''}>Fill / Cover (No Bars)</option>
+                <option value="contain" ${s.scale_mode === 'contain' ? 'selected' : ''}>Fit / Contain (Full Photo)</option>
+              </select>
+            </div>
+            <div class="flex items-center pt-5">
+              <label class="flex items-center space-x-2 text-xs text-slate-300 cursor-pointer">
+                <input type="checkbox" ${s.caption !== false ? 'checked' : ''} onchange="updateSetting(${idx}, 'caption', this.checked)" class="rounded accent-orange-600" />
+                <span>Show Photo Date / Filename</span>
+              </label>
+            </div>
+          </div>
+        `;
+        settingsFieldsHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Device Label / Hostname</label>
+              <input type="text" value="${s.hostname || 'rndrSBC Node'}" onchange="updateSetting(${idx}, 'hostname', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+            </div>
+          </div>
+        `;
+      } else if (item.widget === 'onboarding') {
+        settingsFieldsHTML = `
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-[11px] font-semibold text-slate-400 mb-1">Header Title</label>
+              <input type="text" value="${s.title || "Let's set up your display"}" onchange="updateSetting(${idx}, 'title', this.value)" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:border-orange-500 focus:outline-none" />
+            </div>
+            <div class="sm:col-span-2">
+              <div class="text-[11px] text-slate-400 mb-1.5 flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                Shows the live QR claim-code + Wi-Fi setup instructions on the display
+              </div>
+              <div class="bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-[11px] text-slate-400">
+                Claim token: <code id="onboarding-token-${idx}" class="text-orange-400">—</code>
+                <button onclick="loadOnboardingState(${idx})" class="ml-2 text-[10px] px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Refresh</button>
+              </div>
+            </div>
+          </div>
+        `;
+        setTimeout(() => loadOnboardingState(idx), 0);
+      }
+
+      card.innerHTML = `
+        <div class="flex items-center justify-between cursor-grab" draggable="true" data-idx="${idx}" ondragstart="onWidgetDragStart(event, ${idx})" ondragover="onWidgetDragOver(event, ${idx})" ondrop="onWidgetDrop(event, ${idx})" ondragend="onWidgetDragEnd(event)">
+          <div class="flex items-center space-x-2.5">
+            <span class="text-slate-500 cursor-grab select-none" title="Drag to reorder">⠿</span>
+            <span class="w-6 h-6 rounded bg-slate-800 text-slate-400 font-bold text-xs flex items-center justify-center">${idx + 1}</span>
+            <span class="font-bold text-sm text-slate-200">${getWidgetTitle(item.widget)}</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <label class="text-xs text-slate-400">Duration:</label>
+            <input type="number" min="1" max="1440" value="${item.duration_minutes || 15}" onchange="updateDuration(${idx}, parseInt(this.value))" class="w-16 bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-slate-100 text-center focus:outline-none" />
+            <span class="text-xs text-slate-500">min</span>
+            <button onclick="removeWidget(${idx})" class="text-slate-500 hover:text-rose-400 p-1 transition ml-2">✕</button>
+          </div>
+        </div>
+        <div class="pt-2 border-t border-slate-800/60">
+          ${settingsFieldsHTML}
+        </div>
+      `;
+
+      return card;
+    }
+
+    function toggleWeatherKey(idx, provider) {
+      const el = document.getElementById(`w-key-box-${idx}`);
+      if (el) el.classList.toggle('hidden', provider !== 'OpenWeatherMap');
+    }
+
+    function getWidgetTitle(type) {
+      const map = {
+        weather: '☀️ Weather Dashboard',
+        clock: '🕒 Clock & Date',
+        calendar: '📅 Calendar & Agenda',
+        news: '📰 News & RSS Feed',
+        quotes: '💡 Daily Quotes & Thoughts',
+        crypto: '⚡ Crypto & Markets',
+        system_stats: '💻 System Monitor',
+        onboarding: '📱 Device Setup & QR Claim',
+        photo_frame: '🖼️ Photo Frame',
+        composite_grid: '🧩 Multi-Zone Layout Grid',
+        network: '📶 Network Diagnostics'
+      };
+      return map[type] || type;
+    }
+
+    function toggleNewsCustom(idx, val) {
+      const el = document.getElementById(`news-custom-${idx}`);
+      if (el) el.classList.toggle('hidden', val !== 'Custom URL');
+    }
+
+    function initWeatherMap(idx, lat, lon) {
+      const mapDiv = document.getElementById(`wmap-${idx}`);
+      if (!mapDiv || weatherMaps[idx]) return;
+
+      const map = L.map(mapDiv, { zoomControl: false, attributionControl: false }).setView([lat, lon], 10);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);
+
+      const marker = L.marker([lat, lon], { draggable: true }).addTo(map);
+      marker.on('dragend', function() {
+        const pos = marker.getLatLng();
+        updateSettingFromMap(idx, 'latitude', parseFloat(pos.lat.toFixed(4)));
+        updateSettingFromMap(idx, 'longitude', parseFloat(pos.lng.toFixed(4)));
+      });
+
+      weatherMaps[idx] = map;
+    }
+
+    function updateSettingFromMap(idx, field, val) {
+      const pl = currentConfig.playlists[selectedPlaylistKey];
+      if (!pl || !pl.items[idx]) return;
+      if (!pl.items[idx].settings) pl.items[idx].settings = {};
+      pl.items[idx].settings[field] = val;
+
+      const latEl = document.getElementById(`w-lat-${idx}`);
+      const lonEl = document.getElementById(`w-lon-${idx}`);
+      if (latEl && field === 'latitude') latEl.value = val;
+      if (lonEl && field === 'longitude') lonEl.value = val;
+
+      const map = weatherMaps[idx];
+      if (map) {
+        const curLat = pl.items[idx].settings.latitude || 40.7128;
+        const curLon = pl.items[idx].settings.longitude || -74.0060;
+        map.setView([curLat, curLon], map.getZoom());
+      }
+    }
+
+    let searchTimeout = null;
+    function searchLocation(idx, query) {
+      clearTimeout(searchTimeout);
+      const resultsEl = document.getElementById(`search-results-${idx}`);
+      if (!query || query.length < 2) {
+        if (resultsEl) resultsEl.classList.add('hidden');
+        return;
+      }
+
+      searchTimeout = setTimeout(async () => {
+        try {
+          const res = await fetch(`/api/geocode?q=${encodeURIComponent(query)}`);
+          const results = await res.json();
+          if (!results || results.length === 0) {
+            resultsEl.innerHTML = '<div class="px-3 py-2 text-slate-400">No matching locations found</div>';
+            resultsEl.classList.remove('hidden');
+            return;
+          }
+
+          resultsEl.innerHTML = results.map(r => `
+            <button type="button" onclick="pickLocation(${idx}, '${r.name.replace(/'/g, "\\'")}', ${r.latitude}, ${r.longitude})" class="w-full text-left px-3 py-2 hover:bg-slate-800 text-slate-200 block transition">
+              <div class="font-semibold text-white">${r.name}</div>
+              <div class="text-[10px] text-slate-400">${r.label}</div>
+            </button>
+          `).join('');
+          resultsEl.classList.remove('hidden');
+        } catch (e) {
+          console.error("Geocoding failed:", e);
+        }
+      }, 300);
+    }
+
+    function pickLocation(idx, name, lat, lon) {
+      const resultsEl = document.getElementById(`search-results-${idx}`);
+      if (resultsEl) resultsEl.classList.add('hidden');
+
+      const locInput = document.getElementById(`w-loc-${idx}`);
+      if (locInput) locInput.value = name;
+
+      updateSetting(idx, 'location', name);
+      updateSettingFromMap(idx, 'latitude', lat);
+      updateSettingFromMap(idx, 'longitude', lon);
+    }
+
+    function updateSetting(idx, field, val) {
+      const pl = currentConfig.playlists[selectedPlaylistKey];
+      if (pl && pl.items[idx]) {
+        if (!pl.items[idx].settings) pl.items[idx].settings = {};
+        pl.items[idx].settings[field] = val;
+      }
+    }
+
+    function updateDuration(idx, mins) {
+      const pl = currentConfig.playlists[selectedPlaylistKey];
+      if (pl && pl.items[idx]) {
+        pl.items[idx].duration_minutes = Math.max(1, mins || 15);
+        renderPlaylist();
+      }
+    }
+
+    function removeWidget(idx) {
+      const pl = currentConfig.playlists[selectedPlaylistKey];
+      if (pl && pl.items) {
+        pl.items.splice(idx, 1);
+        renderPlaylist();
+      }
+    }
+
+    function updateHardwareSettings() {
+      if (!currentConfig.display) currentConfig.display = {};
+      currentConfig.display.driver = document.getElementById('cfg-driver').value;
+      currentConfig.display.model = document.getElementById('cfg-model').value;
+      currentConfig.display.orientation = parseInt(document.getElementById('cfg-orient').value);
+      currentConfig.display.saturation = parseFloat(document.getElementById('cfg-saturation').value) || 0.5;
+      // Drop stale fixed resolution: the server re-derives width/height from
+      // the selected panel model (DISPLAY_MODELS) so the screen size actually
+      // changes. Keeping stale width/height would silently win over the model
+      // map and freeze the preview at the old resolution.
+      delete currentConfig.display.width;
+      delete currentConfig.display.height;
+    }
+
+    function updateQuietHoursSettings() {
+      if (!currentConfig.quiet_hours) currentConfig.quiet_hours = {};
+      currentConfig.quiet_hours.enabled = document.getElementById('cfg-qh-enabled').checked;
+      currentConfig.quiet_hours.start = document.getElementById('cfg-qh-start').value;
+      currentConfig.quiet_hours.end = document.getElementById('cfg-qh-end').value;
+      currentConfig.quiet_hours.mode = "suspend";
+    }
+
+    function updateDeviceSettings() {
+      if (!currentConfig.device) currentConfig.device = {};
+      currentConfig.device.timezone = document.getElementById('cfg-timezone').value;
+      currentConfig.device.name = document.getElementById('cfg-device-name').value || 'rndrSBC Node';
+      currentConfig.transition = document.getElementById('cfg-transition').value || 'cut';
+      currentConfig.language = document.getElementById('cfg-language').value || 'en';
+      currentConfig.refresh_mode = document.getElementById('cfg-refresh-mode').value || 'auto';
+    }
+
+    async function saveAndApply() {
+      updateHardwareSettings();
+      updateQuietHoursSettings();
+      updateDeviceSettings();
+
+      const res = await spinButton(document.getElementById('btn-apply'),
+        fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentConfig)
+        }),
+        'Saving');
+
+      if (res.status === 401) {
+        showLoginModal();
+        return;
+      }
+
+      if (res.ok) {
+        setTimeout(refreshDisplayNow, 500);
+      }
+    }
+
+    async function refreshDisplayNow() {
+      const res = await spinButton(document.getElementById('btn-refresh'),
+        fetch('/api/refresh', { method: 'POST' }),
+        'Refreshing');
+      if (res.status === 401) {
+        showLoginModal();
+        return;
+      }
+      setTimeout(() => {
+        const img = document.getElementById('live-screen-img');
+        img.src = '/api/screen.png?t=' + Date.now();
+        document.getElementById('mirror-timestamp').textContent = 'Refreshed: ' + new Date().toLocaleTimeString();
+      }, 1000);
+    }
+
+    // Initialize
+    (async () => {
+      await consumeClaimFromUrl();
+      await checkAuthStatus();
+      // Gate the management UI behind authentication once an admin password
+      // exists: a device that has finished onboarding must not expose its
+      // configuration, photo library, or live screen to an unauthenticated
+      // visitor. Before setup completes we still load (the setup flow needs it).
+      if (!isAuthenticated && !setupRequired) {
+        showLoginModal();
+        return;
+      }
+      await loadStatus();
+      setInterval(() => {
+        const img = document.getElementById('live-screen-img');
+        if (img) img.src = '/api/screen.png?t=' + Date.now();
+      }, 30000);
+    })();
   </script>
   <script>
-await checkAuthStatus(); const lock = document.getElementById('auth-lock'); if (isAuthenticated) { lock.classList.add('hidden'); try { loadTelemetry(); } catch (e) {} try { checkUpdate(); } catch (e) {} } else { lock.classList.remove('hidden'); }
+(async () => {
+  await checkAuthStatus(); const lock = document.getElementById('auth-lock'); if (isAuthenticated) { lock.classList.add('hidden'); try { loadTelemetry(); } catch (e) {} try { checkUpdate(); } catch (e) {} } else { lock.classList.remove('hidden'); }
+})();
   </script>
 </body>
 </html>

@@ -92,3 +92,32 @@ def test_fallback_html_is_valid():
     assert match, "DASHBOARD_HTML literal not found in server/app.py"
     assert match.group(1).lstrip().startswith("<!DOCTYPE html>"), \
         "DASHBOARD_HTML fallback missing <!DOCTYPE html> prologue"
+
+
+@pytest.mark.parametrize("name", PAGES)
+def test_single_nav_bar(name):
+    """Regression: the builder once emitted two stacked navs (source's
+    section navigator + injected page nav) - exactly one per page now."""
+    content = _load(name)
+    assert content.count('id="section-tabs"') == 1, f"{name} must have exactly one nav bar"
+
+
+@pytest.mark.parametrize("name", PAGES)
+def test_init_wrapped_in_iife(name):
+    """Regression: init snippets used top-level await in a classic script,
+    which is a SyntaxError in browsers and silently killed ALL page init
+    (auth toggle, lock overlay, panels). Must be wrapped in an async IIFE."""
+    content = _load(name)
+    assert "await checkAuthStatus" in content, f"{name} missing auth init"
+    # The bug signature: the init statement appeared as its own line right
+    # after <script> with no IIFE wrapper. Require the wrapper.
+    assert re.search(r"<script>\s*\(async \(\) => \{", content), f"{name} init not wrapped in async IIFE"
+
+
+@pytest.mark.parametrize("name", PAGES)
+def test_mobile_nav_present(name):
+    """Mobile nav: accordion panel + hamburger toggle on every page."""
+    content = _load(name)
+    assert 'id="mobile-nav"' in content, f"{name} missing mobile nav accordion"
+    assert 'id="nav-toggle"' in content, f"{name} missing hamburger toggle"
+    assert "md:hidden" in content, f"{name} mobile nav not hidden on desktop"

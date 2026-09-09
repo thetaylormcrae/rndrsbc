@@ -167,6 +167,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
   </header>
 
   <!-- Section Navigator -->
+    <!-- Section Navigator -->
   <div id="section-tabs" class="sticky top-[64px] z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-2 flex gap-1 overflow-x-auto">
     <a data-page-nav="playlists" href="/playlists" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🎛️ Playlists</a>
     <a data-page-nav="widgets" href="/widgets" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🧩 Widgets</a>
@@ -427,6 +428,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
     </div>
 
     <!-- Display Hardware & Quiet Hours Settings -->
+    <!-- Settings Grid: hardware + quiet hours + admin security -->
     <div data-tab="playlist" class="grid grid-cols-1 md:grid-cols-2 gap-6">
       
       <!-- Display Driver Settings -->
@@ -638,6 +640,8 @@ DASHBOARD_HTML = """<!DOCTYPE html>
       </button>
     </div>
   </div>
+
+  <!-- MODALS END -->
 
   <script>
     let currentConfig = null;

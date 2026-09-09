@@ -48,50 +48,59 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
+
 <body class="text-slate-100 min-h-screen flex flex-col antialiased">
-  <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 px-6 py-3.5 sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto flex items-center justify-between gap-4">
-      <div class="flex items-center space-x-3">
-        <div class="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center font-bold text-white text-sm shadow-lg shadow-orange-600/30">rS</div>
-        <div class="hidden sm:block">
-          <h1 class="font-bold text-base tracking-tight text-white leading-tight">rndrSBC <span class="text-orange-400">Portal</span></h1>
-          <p class="text-[10px] text-slate-500 -mt-0.5">E-Paper Management</p>
-        </div>
+
+  <!-- Navigation Bar -->
+  <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 px-6 py-3.5 sticky top-0 z-40 flex items-center justify-between">
+    <div class="flex items-center space-x-3">
+      <div class="w-8 h-8 rounded-lg bg-orange-600 flex items-center justify-center font-bold text-white tracking-wider text-sm shadow-lg shadow-orange-600/30">
+        rS
       </div>
-      <nav id="main-nav" class="hidden md:flex items-center space-x-1">
-        <a href="/" data-nav="dashboard" class="navlink px-3 py-1.5 rounded-lg text-xs font-semibold transition">Dashboard</a>
-        <a href="/playlists" data-nav="playlists" class="text-slate-400 hover:text-slate-100 hover:bg-slate-800">Playlists</a>
-        <a href="/widgets" data-nav="widgets" class="text-slate-400 hover:text-slate-100 hover:bg-slate-800">Widgets</a>
-        <a href="/settings" data-nav="settings" class="text-slate-400 hover:text-slate-100 hover:bg-slate-800">Settings</a>
-        <a href="/photos" data-nav="photos" class="bg-orange-600 text-white shadow-lg shadow-orange-600/30">Photos</a>
-        <a href="/system" data-nav="system" class="text-slate-400 hover:text-slate-100 hover:bg-slate-800">System</a>
-      </nav>
-      <div class="flex items-center space-x-2">
-        <button id="btn-refresh" onclick="refreshDisplayNow()" class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition">
-          <svg class="w-3.5 h-3.5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-          <span>Refresh</span>
-        </button>
-        <button id="btn-apply" onclick="saveAndApply()" class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-xs font-semibold text-white shadow-lg shadow-orange-600/30 transition">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-        <span>Apply</span>
-        </button>
-        <div class="pl-2 border-l border-slate-800 flex items-center space-x-2">
-          <button id="btn-logout" onclick="logout()" class="hidden text-xs text-slate-400 hover:text-rose-400 px-2 py-1.5 rounded border border-slate-800 hover:border-rose-900 transition">Logout</button>
-          <button id="btn-login" onclick="showLoginModal()" class="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Login</button>
-        </div>
+      <div>
+        <h1 class="font-bold text-base tracking-tight text-white flex items-center gap-2">
+          rndrSBC <span class="text-[11px] font-normal px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20">PRO</span>
+        </h1>
+        <p class="text-xs text-slate-400 hidden sm:block">High-Performance Native E-Paper OS</p>
+      </div>
+    </div>
+
+    <div class="flex items-center space-x-3">
+      <button id="btn-refresh" onclick="refreshDisplayNow()" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 border border-slate-700 transition">
+        <svg class="w-3.5 h-3.5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        <span>Refresh Screen</span>
+      </button>
+      <button id="btn-apply" onclick="saveAndApply()" class="flex items-center space-x-1.5 px-4 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-xs font-semibold text-white shadow-lg shadow-orange-600/30 transition">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+        <span>Save & Apply</span>
+      </button>
+      
+      <div id="auth-controls" class="pl-2 border-l border-slate-800">
+        <button id="btn-logout" onclick="logout()" class="hidden text-xs text-slate-400 hover:text-rose-400 px-2 py-1.5 rounded border border-slate-800 hover:border-rose-900 transition">Logout</button>
+        <button id="btn-login" onclick="showLoginModal()" class="text-xs text-slate-300 hover:text-white px-2.5 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">Login</button>
       </div>
     </div>
   </header>
-  <nav class="md:hidden sticky top-[62px] z-30 bg-slate-950/95 backdrop-blur border-b border-slate-800 px-2 py-1.5 flex gap-1 overflow-x-auto">
-     class="hidden md:flex items-center space-x-1">
-        <a href="/" data-nav="dashboard" class="navlink px-3 py-1.5 rounded-lg text-xs font-semibold transition">Dashboard</a>
-        <a href="/playlists" data-nav="playlists" class="navlink px-3 py-1.5 rounded-lg text-xs font-semibold transition">Playlists</a>
-        <a href="/widgets" data-nav="widgets" class="navlink px-3 py-1.5 rounded-lg text-xs font-semibold transition">Widgets</a>
-        <a href="/settings" data-nav="settings" class="navlink px-3 py-1.5 rounded-lg text-xs font-semibold transition">Settings</a>
-        <a href="/photos" data-nav="photos" class="navlink px-3 py-1.5 rounded-lg text-xs font-semibold transition">Photos</a>
-        <a href="/system" data-nav="system" class="navlink px-3 py-1.5 rounded-lg text-xs font-semibold transition">System</a>
-      
-  </nav>
+
+  <!-- Section Navigator -->
+  <div id="section-tabs" class="sticky top-[64px] z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-2 flex gap-1 overflow-x-auto">
+    <a data-page-nav="playlists" href="/playlists" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🎛️ Playlists</a>
+    <a data-page-nav="widgets" href="/widgets" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🧩 Widgets</a>
+    <a data-page-nav="settings" href="/settings" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">⚙️ Settings</a>
+    <a data-page-nav="photos" href="/photos" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">🖼️ Photos <span class="page-lock" data-lock-photos>🔒</span></a>
+    <a data-page-nav="system" href="/system" class="rtab-btn px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition">💾 System & Update</a>
+  </div>
+
+  <!-- Page Nav -->
+  <div id="section-tabs" class="sticky top-[64px] z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800">
+    <a href="/" class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition text-slate-400 hover:text-slate-100 hover:bg-slate-800">Dashboard</a>
+    <a href="/playlists" class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition text-slate-400 hover:text-slate-100 hover:bg-slate-800">Playlists</a>
+    <a href="/widgets" class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition text-slate-400 hover:text-slate-100 hover:bg-slate-800">Widgets</a>
+    <a href="/settings" class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition text-slate-400 hover:text-slate-100 hover:bg-slate-800">Settings</a>
+    <a href="/photos" class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition bg-orange-600 text-white shadow-lg shadow-orange-600/30">Photos</a>
+    <a href="/system" class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition text-slate-400 hover:text-slate-100 hover:bg-slate-800">System</a>
+  </div>
+
     <!-- Auth Lock Overlay -->
     <div id="auth-lock" class="hidden fixed inset-0 z-40 bg-slate-950/95 backdrop-blur flex items-center justify-center p-4">
       <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 text-center">
@@ -101,15 +110,26 @@
         <button onclick="showLoginModal()" class="w-full py-2.5 rounded-lg bg-orange-600 hover:bg-orange-500 font-semibold text-sm text-white shadow-lg shadow-orange-600/30 transition">Log In</button>
       </div>
     </div>
+
   <main class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
-      <section class="bg-slate-900/70 rounded-2xl border border-slate-800 p-5 space-y-4">
-        <h2 class="text-lg font-bold text-white">Photos</h2>
-        <p class="text-xs text-slate-400">Upload images and push them to the display.</p>
-        <div id="photos-content" class="text-xs text-slate-400">Loading&hellip;</div>
-      </section>
+  <!-- Photo Library (auth) -->
+  <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+    <div>
+      <h2 class="font-bold text-base text-slate-100">🖼️ Photo Library</h2>
+      <p class="text-xs text-slate-400">Upload images to use as playlist widgets</p>
+    </div>
+    <div class="flex items-center gap-3">
+      <input type="file" id="photo-input" accept="image/*" class="text-xs text-slate-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-slate-800 file:text-slate-200 file:text-xs" />
+      <button onclick="uploadPhoto()" id="btn-photo-upload" class="px-4 py-1.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-xs font-semibold text-white">Upload</button>
+    </div>
+    <div id="photos-content" class="text-xs text-slate-400 space-y-2">
+      <div>Loading photos…</div>
+    </div>
+  </div>
+
   </main>
 
-  <!-- First-Run Admin Setup Modal -->
+<!-- First-Run Admin Setup Modal -->
   <div id="modal-setup" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-700 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
       <div class="w-10 h-10 rounded-xl bg-orange-600 flex items-center justify-center font-bold text-white text-lg shadow-lg shadow-orange-600/30">
@@ -299,11 +319,24 @@
         await loadStatus();
         // Re-fetch the auth-gated panels now that we have a session.
         await Promise.allSettled([loadTelemetry(), loadPhotos(), checkUpdate()]);
-        // Stay on the page the user was on when they logged in; auth-gated
-        // panels are now unlocked for this session.
-        const target = window._pendingPage || (window.location.pathname || '/');
-        window._pendingPage = null;
-        window.location.href = target;
+        // Stay on the page the user was on when they logged in; unlock the
+        // auth-lock overlay and load that page's panels for this session.
+        const lock = document.getElementById('auth-lock');
+        if (lock) lock.classList.add('hidden');
+        if (setupRequired) setupRequired = false;
+        if (window.location.pathname === '/playlists') {
+          try { renderPlaylistTabs(); renderPlaylist(); } catch (e) {}
+        } else if (window.location.pathname === '/widgets') {
+          try { devStudioInit(); } catch (e) {}
+        } else if (window.location.pathname === '/settings') {
+          try { buildTimezoneSelect(); updateHardwareSettings(); updateQuietHoursSettings(); updateDeviceSettings(); } catch (e) {}
+        } else if (window.location.pathname === '/photos') {
+          try { loadPhotos(); } catch (e) {}
+        } else if (window.location.pathname === '/system') {
+          try { loadTelemetry(); checkUpdate(); } catch (e) {}
+        } else {
+          try { await loadStatus(); renderPlaylistTabs(); } catch (e) {}
+        }
       } else {
         err.textContent = "Invalid administrator password.";
         err.classList.remove('hidden');
@@ -313,7 +346,10 @@
     async function logout() {
       await fetch('/api/auth/logout', {method: 'POST'});
       isAuthenticated = false;
-      window.location.href = '/';
+      const lock = document.getElementById('auth-lock');
+      if (lock) lock.classList.remove('hidden');
+      const path = window.location.pathname;
+      if (path === '/') { window.location.href = '/'; }
     }
 
     async function updatePassword() {
@@ -400,8 +436,10 @@
         document.getElementById('cfg-language').value = (currentConfig.language || 'en').split('-')[0];
         document.getElementById('cfg-refresh-mode').value = currentConfig.refresh_mode || 'auto';
 
-        renderPlaylistTabs();
-        renderPlaylist();
+        if (document.getElementById('playlist-tabs')) {
+          renderPlaylistTabs();
+          renderPlaylist();
+        }
       } catch (err) {
         console.error("Failed to load config:", err);
       }
@@ -421,6 +459,7 @@
         ['Pacific', ['Apia','Auckland','Chatham','Chuuk','Easter','Efate','Fakaofo','Fiji','Guadalcanal','Guam','Honolulu','Kiritimati','Majuro','Midway','Noumea','Pago_Pago','Palau','Port_Moresby','Tarawa','Tongatapu','Wake']]
       ];
       const sel = document.getElementById('cfg-timezone');
+      if (!sel) return;  // timezone select only exists on /settings
       sel.innerHTML = '';
       zones.forEach(([group, list]) => {
         const og = document.createElement('optgroup');
@@ -1187,64 +1226,8 @@
         if (img) img.src = '/api/screen.png?t=' + Date.now();
       }, 30000);
     })();
+  
   </script>
-  <!-- Device Telemetry, Appliance Administration, OTA Update & Photo Library Panels -->
-  <div class="max-w-6xl mx-auto px-4 pb-10 pt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-    <div data-tab="backup" class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
-      <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">📡 Device Health</div>
-      <div id="telemetry-content" class="text-[11px] text-slate-400 space-y-1">
-        <div>Load monitoring…</div>
-      </div>
-      <button onclick="loadTelemetry()" class="mt-2 text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Refresh</button>
-    </div>
-
-    <div data-tab="backup" class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
-      <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">⚡ System & Power</div>
-      <div class="space-y-1.5 pt-1">
-        <button onclick="triggerPanelClean()" class="w-full text-left text-[11px] px-2.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/20 flex items-center justify-between">
-          <span>🧹 Clean Panel Cycle</span>
-          <span class="text-[9px] text-slate-500">Anti-Ghosting</span>
-        </button>
-        <button onclick="systemAction('restart')" class="w-full text-left text-[11px] px-2.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 flex items-center justify-between">
-          <span>🔄 Restart rndrSBC</span>
-          <span class="text-[9px] text-slate-500">Service</span>
-        </button>
-        <div class="grid grid-cols-2 gap-1.5 pt-0.5">
-          <button onclick="systemAction('reboot')" class="text-center text-[11px] px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">
-            Reboot Pi
-          </button>
-          <button onclick="systemAction('shutdown')" class="text-center text-[11px] px-2 py-1 rounded bg-rose-950/30 hover:bg-rose-900/40 text-rose-300 border border-rose-800/40">
-            Power Off
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div data-tab="backup" class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
-      <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">💾 Backup & Updates</div>
-      <div id="update-content" class="text-[11px] text-slate-400 mb-2">Checking…</div>
-      <div class="flex items-center space-x-1.5 mb-2.5">
-        <button onclick="checkUpdate()" class="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Check OTA</button>
-        <button onclick="applyUpdate()" class="text-[10px] px-2 py-1 rounded bg-orange-600/80 hover:bg-orange-500 text-white">Apply</button>
-      </div>
-      <div class="pt-2 border-t border-slate-800 flex items-center justify-between">
-        <button onclick="exportConfigBackup()" class="text-[10px] px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">Export JSON</button>
-        <label class="text-[10px] px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800 cursor-pointer">
-          Import JSON
-          <input type="file" accept=".json" onchange="importConfigBackup(event)" class="hidden" />
-        </label>
-      </div>
-    </div>
-
-    <div data-tab="photos" class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
-      <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">🖼️ Photo Library</div>
-      <input type="file" id="photo-upload" accept="image/*" class="text-[10px] text-slate-400 mb-2 w-full" />
-      <button id="btn-upload-photo" onclick="uploadPhoto()" class="text-[10px] px-2 py-1 rounded bg-pink-600/80 hover:bg-pink-500 text-white">Upload Photo</button>
-      <button onclick="loadPhotos()" class="text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Refresh</button>
-      <div id="photos-content" class="mt-2 text-[11px] text-slate-500"></div>
-    </div>
-  </div>
-
   <script>
     async function loadTelemetry() {
       try {
@@ -1589,19 +1572,10 @@
         dsRender();
       }
     }
+  
   </script>
   <script>
-    (async () => {
-      await checkAuthStatus();
-      const lock = document.getElementById('auth-lock');
-      if (isAuthenticated) {
-        lock.classList.add('hidden');
-        try { loadPhotos(); } catch (e) {}
-      } else {
-        lock.classList.remove('hidden');
-      }
-    })();
-
+await checkAuthStatus(); const lock = document.getElementById('auth-lock'); if (isAuthenticated) { lock.classList.add('hidden'); try { loadPhotos(); } catch (e) {} } else { lock.classList.remove('hidden'); }
   </script>
 </body>
 </html>

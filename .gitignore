@@ -25,3 +25,4 @@ __pycache__/
 /vendor/deps/*.whl
 /vendor/deps/*.tar.gz
 /vendor/deps/*.zip
+server/templates/.build_parts.json

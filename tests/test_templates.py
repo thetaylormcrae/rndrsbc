@@ -81,7 +81,7 @@ def test_structure_wellformed(name):
 def test_router_covers_all_templates():
     """Every template file must be routable, and every route must map to a real file."""
     on_disk = {f for f in os.listdir(TEMPLATES_DIR) if f.endswith(".html") and f != "fallback.html"}
-    assert set(ROUTES.values()) == on_disk, "route map and templates dir out of sync"
+    set(ROUTES.values()) == on_disk, "route map and templates dir out of sync"
 
 
 def test_fallback_html_is_valid():

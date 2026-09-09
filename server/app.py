@@ -899,8 +899,10 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         document.getElementById('cfg-language').value = (currentConfig.language || 'en').split('-')[0];
         document.getElementById('cfg-refresh-mode').value = currentConfig.refresh_mode || 'auto';
 
-        renderPlaylistTabs();
-        renderPlaylist();
+        if (document.getElementById('playlist-tabs')) {
+          renderPlaylistTabs();
+          renderPlaylist();
+        }
       } catch (err) {
         console.error("Failed to load config:", err);
       }
@@ -920,6 +922,7 @@ DASHBOARD_HTML = """<!DOCTYPE html>
         ['Pacific', ['Apia','Auckland','Chatham','Chuuk','Easter','Efate','Fakaofo','Fiji','Guadalcanal','Guam','Honolulu','Kiritimati','Majuro','Midway','Noumea','Pago_Pago','Palau','Port_Moresby','Tarawa','Tongatapu','Wake']]
       ];
       const sel = document.getElementById('cfg-timezone');
+      if (!sel) return;  // timezone select only exists on /settings
       sel.innerHTML = '';
       zones.forEach(([group, list]) => {
         const og = document.createElement('optgroup');

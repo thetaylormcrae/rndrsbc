@@ -1,0 +1,38 @@
+  <!-- System & Update (auth) -->
+  <div class="max-w-6xl w-full mx-auto space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
+        <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">📡 Device Health</div>
+        <div id="telemetry-content" class="text-[11px] text-slate-400 space-y-1"><div>Load monitoring…</div></div>
+        <button onclick="loadTelemetry()" class="mt-2 text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Refresh</button>
+      </div>
+      <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
+        <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">⚡ System & Power</div>
+        <div class="space-y-1.5 pt-1">
+          <button onclick="triggerPanelClean()" class="w-full text-left text-[11px] px-2.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-amber-300 border border-amber-500/20 flex items-center justify-between">
+            <span>🧹 Clean Panel Cycle</span><span class="text-[9px] text-slate-500">Anti-Ghosting</span>
+          </button>
+          <button onclick="systemAction('restart')" class="w-full text-left text-[11px] px-2.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 flex items-center justify-between">
+            <span>🔄 Restart rndrSBC</span><span class="text-[9px] text-slate-500">Service</span>
+          </button>
+          <div class="grid grid-cols-2 gap-1.5 pt-0.5">
+            <button onclick="systemAction('reboot')" class="text-center text-[11px] px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-slate-300 border border-slate-800">Reboot Device</button>
+            <button onclick="systemAction('shutdown')" class="text-center text-[11px] px-2 py-1 rounded bg-slate-900 hover:bg-slate-800 text-rose-300 border border-rose-500/20">Shut Down</button>
+          </div>
+        </div>
+      </div>
+      <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
+        <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">⚙️ Firmware / OTA</div>
+        <div id="update-content" class="text-[11px] text-slate-400 space-y-1"><div>Checking for updates…</div></div>
+        <button onclick="checkUpdate()" class="mt-2 text-[10px] px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Check</button>
+        <button onclick="applyUpdate()" id="btn-apply-update" class="mt-1 w-full text-[10px] py-1 rounded bg-orange-600 hover:bg-orange-500 text-white font-semibold">Update Now</button>
+      </div>
+      <div class="bg-slate-950/60 border border-slate-800/80 rounded-xl p-4">
+        <div class="text-xs font-bold text-slate-200 mb-2 flex items-center gap-2">💾 Config Backup</div>
+        <div class="space-y-1.5 pt-1">
+          <button onclick="exportConfigBackup()" class="w84-full text-left text-[11px] px-2.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800">Export Config</button>
+          <label class="block w-full text-left text-[11px] px-2.5 py-1.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 cursor-pointer">Import Config<input type="file" id="cfg-import" accept=".json" class="hidden" onchange="importConfigBackup(event)"></label>
+        </div>
+      </div>
+    </div>
+  </div>

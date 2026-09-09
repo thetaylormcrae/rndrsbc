@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.22.3 (2026-09-09)
+
+### Bug Fixes
+
+- **web**: Create runtime data dir on first bearer-token issue
+  ([`626f3c5`](https://github.com/thetaylormcrae/rndrsbc/commit/626f3c536e54fb0fe95dea3a7a5f98e8e85b47e2))
+
+
 ## v0.22.2 (2026-09-09)
 
 ### Bug Fixes

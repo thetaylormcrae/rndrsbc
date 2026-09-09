@@ -98,6 +98,11 @@ def build():
         else:
             for key in SECTIONS[page]:
                 parts.append(p[key]); parts.append("")
+            if page == "settings":
+                # SEC_SEC's slice ends before its two closing tags (card +
+                # md:grid wrapper) so close both explicitly.
+                parts.append("      </div>"); parts.append("")
+                parts.append("    </div>"); parts.append("")
         parts += ["  </main>", "", p["MODALS"], "",
                   "  <script>", p["JS_CORE"], "  </script>",
                   "  <script>", p["JS_TAIL"], "  </script>",

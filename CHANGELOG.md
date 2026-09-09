@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.22.1 (2026-09-09)
+
+### Bug Fixes
+
+- **packaging**: Declare flask + waitress as runtime deps; fix vendor bundle
+  ([`b37167c`](https://github.com/thetaylormcrae/rndrsbc/commit/b37167c8691f1394abc661ac33127e5ce4d8b138))
+
+
 ## v0.22.0 (2026-09-09)
 
 ### Features

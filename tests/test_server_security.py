@@ -1,23 +1,21 @@
-"""Security regression tests for the production web server.
+"""Security-gate regression tests for the Flask web app.
 
-Guards the onboarding-auth gate (#security): the disruptive onboarding mutators
-(/api/onboarding/ap/start, /api/onboarding/ap/stop, /api/onboarding/wifi) must be
-blocked with 401 once an admin password is set, while remaining usable pre-setup
-so the first-run flow completes. Also locks in injection-resistant SSID/psk
-handling for the wpa_supplicant write path.
+Legacy (server/app.py) tested a hand-rolled cookie store; the Flask port uses a
+signed session cookie. Same intent: once an admin password exists, disruptive
+onboarding mutators require an authenticated session; before setup they stay
+open; the claim endpoint remains token-bounded; wifi fields are sanitized.
 """
+import json
 import os
 import sys
-import json
-import time
 
 import pytest
 
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, root)
 
-import server.app as app
-from server.app import ProductionHandler
+from server.web.app import create_app  # noqa: E402
+from server.web import security  # noqa: E402
 
 MUTATORS = (
     "/api/onboarding/ap/start",
@@ -26,65 +24,58 @@ MUTATORS = (
 )
 
 
-def _make_handler(tmp_path, setup_done, authed):
-    cfg = {"admin_password_hash": "pbkdf2:sha256:x"} if setup_done else {}
-    src = tmp_path / "config.json"
-    src.write_text(json.dumps(cfg))
-
-    h = ProductionHandler.__new__(ProductionHandler)
-    h.config_path = str(src)
-    h.scheduler = None
-
-    app.ACTIVE_SESSIONS.clear()
-    if authed:
-        app.ACTIVE_SESSIONS["tok"] = {"created_at": time.time(), "user": "admin"}
-        h.headers = type("H", (), {
-            "get": lambda s, k, c=None: "rndrsbc_session=tok" if k == "Cookie" else "",
-            "__iter__": lambda s: iter(()),
-        })()
-    else:
-        h.headers = type("H", (), {
-            "get": lambda s, k, c=None: "",
-            "__iter__": lambda s: iter(()),
-        })()
-    return h
+@pytest.fixture()
+def app_ctx(tmp_path, monkeypatch):
+    monkeypatch.setattr(security, "CONFIG_PATH", str(tmp_path / "config.json"))
+    app = create_app()
+    app.testing = True
+    return app
 
 
-def _gate(path, setup_done, authed, tmp_path):
-    """Mirror the gate expression that now precedes the mutator branches."""
-    h = _make_handler(tmp_path, setup_done, authed)
-    return path in MUTATORS and h._has_admin_setup() and not h._is_authenticated()
+def _cfg_setup(tmp_path, setup_done, password="pw"):
+    if not setup_done:
+        (tmp_path / "config.json").write_text("{}")
+        return
+    from werkzeug.security import generate_password_hash
+    (tmp_path / "config.json").write_text(json.dumps(
+        {"admin_password_hash": generate_password_hash(password, method="pbkdf2:sha256")}))
 
 
-def test_mutators_blocked_when_post_setup_and_unauthenticated(tmp_path):
+def test_mutators_blocked_when_post_setup_and_unauthenticated(app_ctx, tmp_path):
+    _cfg_setup(tmp_path, True)
+    c = app_ctx.test_client()
     for p in MUTATORS:
-        assert _gate(p, setup_done=True, authed=False, tmp_path=tmp_path), p
+        r = c.post(p, json={})
+        assert r.status_code == 401, (p, r.status_code)
 
 
-def test_mutators_allowed_pre_setup(tmp_path):
-    # First-run flow must still reach the endpoints without a password.
+def test_mutators_allowed_pre_setup(app_ctx, tmp_path):
+    _cfg_setup(tmp_path, False)
+    c = app_ctx.test_client()
     for p in MUTATORS:
-        assert not _gate(p, setup_done=False, authed=False, tmp_path=tmp_path), p
+        r = c.post(p, json={})
+        assert r.status_code != 401, (p, r.status_code)
 
 
-def test_mutators_allowed_post_setup_when_authenticated(tmp_path):
+def test_mutators_allowed_post_setup_when_authenticated(app_ctx, tmp_path):
+    _cfg_setup(tmp_path, True)  # real pbkdf2 hash for "pw"
+    c = app_ctx.test_client()
+    r = c.post("/api/auth/login", json={"password": "pw"})
+    assert r.status_code == 200, r.status_code
     for p in MUTATORS:
-        assert not _gate(p, setup_done=True, authed=True, tmp_path=tmp_path), p
+        r2 = c.post(p, json={})
+        assert r2.status_code != 401, (p, r2.status_code)
 
 
-def test_claim_remains_open_post_setup(tmp_path):
-    # /api/onboarding/claim is bounded by claim-token validity and stays open.
-    assert not _gate("/api/onboarding/claim", True, False, tmp_path)
+def test_claim_remains_open_post_setup(app_ctx, tmp_path):
+    _cfg_setup(tmp_path, True)
+    c = app_ctx.test_client()
+    r = c.post("/api/onboarding/claim", json={})
+    assert r.status_code != 401, r.status_code
 
 
 def test_wifi_field_sanitizer_rejects_injection():
-    # Mirror the helper used before writing into wpa_supplicant.conf.
-    def _safe_wifi_field(value, max_len=63):
-        if len(value) > max_len:
-            raise ValueError("long")
-        if any(ch in value for ch in ('"', "\\", "\n", "\r", "\t", "\x00")):
-            raise ValueError("bad char")
-        return value
+    from server.web.routes import _safe_wifi_field
 
     for bad in ('evil"network{', "a\\b", "a\nb", "a\rb", "a\tb", "a\x00b", "x" * 64):
         with pytest.raises(ValueError):

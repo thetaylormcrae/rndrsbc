@@ -44,6 +44,32 @@ PAGE_MAP = {
     "/system": "system.html",
 }
 
+# Nav definition: one place, rendered by base.html's {% for %} loop.
+# The third element is the active flag for the current page.
+NAV_LINKS = (
+    ("/", "Dashboard"),
+    ("/playlists", "Playlists"),
+    ("/widgets", "Widgets"),
+    ("/settings", "Settings"),
+    ("/photos", "Photos"),
+    ("/system", "System"),
+)
+_TPL_TO_PATH = {v: k for k, v in PAGE_MAP.items() if k != "/index.html"}
+
+# Post-setup auth gate (ported from the legacy http.server handler): once an
+# admin password exists, the disruptive onboarding mutators require a session.
+ONBOARDING_MUTATORS = {
+    "/api/onboarding/ap/start",
+    "/api/onboarding/ap/stop",
+    "/api/onboarding/wifi",
+}
+
+
+@bp.before_request
+def _gate_onboarding_mutators():
+    if request.path in ONBOARDING_MUTATORS and has_admin_setup() and not is_authenticated():
+        return jsonify(error="Authentication required"), 401
+
 
 # ---------------------------------------------------------------------------
 # Pages (shell only; data loads via the API)
@@ -60,7 +86,8 @@ def page(path):
             if resp is not None:
                 return resp
         return jsonify(error="Not found"), 404
-    html = render_template(tpl)
+    nav = [(href, label, _TPL_TO_PATH[tpl] == href) for href, label in NAV_LINKS]
+    html = render_template(tpl, NAV_LINKS=nav)
     return Response(_inject_csrf_bootstrap(html), mimetype="text/html")
 
 
@@ -218,8 +245,8 @@ def onboarding_claim():
 @bp.route("/api/onboarding/ap/start", methods=["POST"])
 @csrf_exempt
 def ap_start():
-    from server.onboarding import AccessPointManager
-    mgr = current_app.config.get("AP_MANAGER") or AccessPointManager()
+    from server.onboarding import APManager
+    mgr = current_app.config.get("AP_MANAGER") or APManager()
     ok = mgr.start_ap()
     return jsonify(status="started" if ok else "failed"), (200 if ok else 500)
 
@@ -227,8 +254,8 @@ def ap_start():
 @bp.route("/api/onboarding/ap/stop", methods=["POST"])
 @csrf_exempt
 def ap_stop():
-    from server.onboarding import AccessPointManager
-    mgr = current_app.config.get("AP_MANAGER") or AccessPointManager()
+    from server.onboarding import APManager
+    mgr = current_app.config.get("AP_MANAGER") or APManager()
     mgr.stop_ap()
     return jsonify(status="stopped")
 

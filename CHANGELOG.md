@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.22.4 (2026-09-15)
+
+### Bug Fixes
+
+- **web**: Replace build_pages codegen pipeline with Jinja2 templates
+  ([`75435ac`](https://github.com/thetaylormcrae/rndrsbc/commit/75435acc5b957edb7c71954d22f7a5eb7859fa79))
+
+
 ## v0.22.3 (2026-09-09)
 
 ### Bug Fixes

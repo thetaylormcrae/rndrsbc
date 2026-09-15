@@ -89,7 +89,7 @@
 
 
   <!-- Page Nav -->
-  <div id="section-tabs" class="sticky top-[64px] z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-2 flex gap-1 overflow-x-auto">
+  <div id="section-tabs" class="hidden md:flex sticky top-[64px] z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-2 gap-1 overflow-x-auto">
     {% for href, label, active in NAV_LINKS %}<a href="{{ href }}" class="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition {% if active %}bg-orange-600 text-white shadow-lg shadow-orange-600/30{% else %}text-slate-400 hover:text-slate-100 hover:bg-slate-800{% endif %}">{{ label }}</a>{% endfor %}
   </div>
 
@@ -179,6 +179,11 @@ tailwind.config = {
         }
       }
     }
+  </script>
+  <script>
+    document.getElementById('nav-toggle')?.addEventListener('click', () => {
+      document.getElementById('mobile-nav')?.classList.toggle('hidden');
+    });
   </script>
   <script src="/static/app.js"></script>
   <script>

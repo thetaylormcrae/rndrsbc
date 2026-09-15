@@ -71,10 +71,110 @@
       </div>
 
     </div>
+
+    <!-- Active Playlist Widgets Editor -->
+    <div data-tab="playlist" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+        <div>
+          <h2 class="font-bold text-base text-slate-100 flex items-center gap-2">
+            Playlist Widgets
+            <span class="text-xs font-normal text-slate-400" id="playlist-item-count">(2 widgets configured)</span>
+          </h2>
+          <p class="text-xs text-slate-400">Configure parameters, durations, and layout options for each widget in the active rotation</p>
+        </div>
+
+        <!-- Add Widget Dropdown Catalog -->
+        <div class="relative inline-block text-left">
+          <button onclick="toggleAddDropdown()" class="px-3.5 py-1.5 rounded-lg bg-orange-600/10 hover:bg-orange-600/20 text-orange-400 hover:text-orange-300 border border-orange-500/30 text-xs font-semibold flex items-center gap-1.5 transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            <span>+ Add Widget to Rotation</span>
+          </button>
+          
+          <div id="add-dropdown-menu" class="hidden absolute right-0 mt-2 w-56 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl py-1 z-50">
+            <button onclick="addWidgetToPlaylist('weather')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition">
+              <div class="w-7 h-7 rounded bg-orange-500/20 text-orange-400 flex items-center justify-center font-bold text-xs mt-0.5">☀️</div>
+              <div>
+                <div class="text-xs font-bold text-slate-200">Weather Dashboard</div>
+                <div class="text-[10px] text-slate-400">Live conditions, AQI, & 7-day forecast</div>
+              </div>
+            </button>
+            <button onclick="addWidgetToPlaylist('clock')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
+              <div class="w-7 h-7 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs mt-0.5">🕒</div>
+              <div>
+                <div class="text-xs font-bold text-slate-200">Clock & Date</div>
+                <div class="text-[10px] text-slate-400">Digital / Analog dial with local date</div>
+              </div>
+            </button>
+            <button onclick="addWidgetToPlaylist('calendar')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
+              <div class="w-7 h-7 rounded bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-xs mt-0.5">📅</div>
+              <div>
+                <div class="text-xs font-bold text-slate-200">Calendar & Agenda</div>
+                <div class="text-[10px] text-slate-400">Monthly grid & synchronized iCal feed</div>
+              </div>
+            </button>
+            <button onclick="addWidgetToPlaylist('news')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
+              <div class="w-7 h-7 rounded bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-xs mt-0.5">📰</div>
+              <div>
+                <div class="text-xs font-bold text-slate-200">News & RSS Feed</div>
+                <div class="text-[10px] text-slate-400">Live headlines from BBC, HN, Reuters, NYT</div>
+              </div>
+            </button>
+            <button onclick="addWidgetToPlaylist('quotes')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
+              <div class="w-7 h-7 rounded bg-yellow-500/20 text-yellow-400 flex items-center justify-center font-bold text-xs mt-0.5">💡</div>
+              <div>
+                <div class="text-xs font-bold text-slate-200">Daily Quotes & Thoughts</div>
+                <div class="text-[10px] text-slate-400">Inspirational & philosophical pull-quotes</div>
+              </div>
+            </button>
+            <button onclick="addWidgetToPlaylist('crypto')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
+              <div class="w-7 h-7 rounded bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs mt-0.5">⚡</div>
+              <div>
+                <div class="text-xs font-bold text-slate-200">Crypto & Markets</div>
+                <div class="text-[10px] text-slate-400">Live BTC, ETH, and market asset prices</div>
+              </div>
+            </button>
+            <button onclick="addWidgetToPlaylist('photo_frame')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
+              <div class="w-7 h-7 rounded bg-pink-500/20 text-pink-400 flex items-center justify-center font-bold text-xs mt-0.5">🖼️</div>
+              <div>
+                <div class="text-xs font-bold text-slate-200">Photo Frame</div>
+                <div class="text-[10px] text-slate-400">Rotate uploaded personal photos</div>
+              </div>
+            </button>
+            <button onclick="addWidgetToPlaylist('system_stats')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
+              <div class="w-7 h-7 rounded bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs mt-0.5">💻</div>
+              <div>
+                <div class="text-xs font-bold text-slate-200">System Monitor</div>
+                <div class="text-[10px] text-slate-400">Pi CPU, RAM, and storage stats</div>
+              </div>
+            </button>
+            <button onclick="addWidgetToPlaylist('network')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
+              <div class="w-7 h-7 rounded bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-xs mt-0.5">📶</div>
+              <div>
+                <div class="text-xs font-bold text-slate-200">Network Diagnostics</div>
+                <div class="text-[10px] text-slate-400">Wi-Fi SSID, signal, IP, gateway ping</div>
+              </div>
+            </button>
+            <button onclick="addWidgetToPlaylist('onboarding')" class="w-full text-left px-4 py-2.5 text-xs text-slate-200 hover:bg-slate-800 flex items-start gap-2.5 transition border-t border-slate-800">
+              <div class="w-7 h-7 rounded bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-xs mt-0.5">📱</div>
+              <div>
+                <div class="text-xs font-bold text-slate-200">Device Setup & QR Claim</div>
+                <div class="text-[10px] text-slate-400">QR code + Wi-Fi/AP provisioning instructions</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div id="playlist-container" class="space-y-4">
+        <!-- Dynamically rendered widget cards -->
+      </div>
+    </div>
+
+    </div>
 {% endblock %}
 
 {% block init %}
 (async () => {
-  await checkAuthStatus(); await loadStatus(); if (isAuthenticated) { try { renderPlaylistTabs(); } catch (e) {} }
+  await checkAuthStatus(); await loadStatus(); if (isAuthenticated) { try { renderPlaylistTabs(); renderPlaylist(); } catch (e) {} }
 })();
 {% endblock %}

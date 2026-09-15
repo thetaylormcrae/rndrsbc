@@ -37,6 +37,7 @@ bp = Blueprint("rndrsbc", __name__)
 PAGE_MAP = {
     "/": "dashboard.html",
     "/index.html": "dashboard.html",
+    "/dashboard": "dashboard.html",
     "/playlists": "playlists.html",
     "/widgets": "widgets.html",
     "/settings": "settings.html",
@@ -499,8 +500,17 @@ def devstudio_render():
 @login_required
 def devstudio_widgets():
     from server.dev_studio import WIDGETS
-    out = [{"name": name, "schema": (getattr(w, "get_config_schema", lambda: [])() or [])}
-           for name, w in sorted(WIDGETS.items())]
+    out = []
+    for name, w in sorted(WIDGETS.items()):
+        try:
+            schema = getattr(w, "get_config_schema", lambda: [])() or []
+        except Exception:
+            schema = []
+        # Widget schemas may be {"fields": [...]} (dict form) or a bare list;
+        # normalize to a bare list so the web UI can iterate uniformly.
+        if isinstance(schema, dict):
+            schema = schema.get("fields", [])
+        out.append({"name": name, "schema": schema})
     return jsonify(widgets=out)
 
 

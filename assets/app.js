@@ -257,7 +257,7 @@ let currentConfig = null;
         document.getElementById('cfg-language').value = (currentConfig.language || 'en').split('-')[0];
         document.getElementById('cfg-refresh-mode').value = currentConfig.refresh_mode || 'auto';
 
-        if (document.getElementById('playlist-tabs')) {
+        if (document.getElementById('playlist-tabs') || document.getElementById('playlist-container')) {
           renderPlaylistTabs();
           renderPlaylist();
         }
@@ -331,14 +331,18 @@ let currentConfig = null;
       }
 
       const curPl = playlists[selectedPlaylistKey] || { name: selectedPlaylistKey, items: [] };
-      document.getElementById('current-tab-name').textContent = curPl.name || selectedPlaylistKey;
+      const nameEl = document.getElementById('current-tab-name');
+      const badgeEl = document.getElementById('active-badge');
+      const setActiveEl = document.getElementById('btn-set-active');
+      const delEl = document.getElementById('btn-del-playlist');
+      if (nameEl) nameEl.textContent = curPl.name || selectedPlaylistKey;
       
       const isCurActive = (selectedPlaylistKey === activeKey);
-      document.getElementById('active-badge').classList.toggle('hidden', !isCurActive);
-      document.getElementById('btn-set-active').classList.toggle('hidden', isCurActive);
+      if (badgeEl) badgeEl.classList.toggle('hidden', !isCurActive);
+      if (setActiveEl) setActiveEl.classList.toggle('hidden', isCurActive);
       
       const canDelete = Object.keys(playlists).length > 1;
-      document.getElementById('btn-del-playlist').classList.toggle('hidden', !canDelete);
+      if (delEl) delEl.classList.toggle('hidden', !canDelete);
     }
 
     function selectPlaylistTab(key) {
@@ -446,11 +450,13 @@ let currentConfig = null;
       const pl = currentConfig.playlists[selectedPlaylistKey] || { items: [] };
       const items = pl.items || [];
 
-      document.getElementById('playlist-item-count').textContent = `(${items.length} widget${items.length === 1 ? '' : 's'} configured)`;
+      const countEl = document.getElementById('playlist-item-count');
+      if (countEl) countEl.textContent = `(${items.length} widget${items.length === 1 ? '' : 's'} configured)`;
 
       let totalMins = 0;
       items.forEach((item) => { totalMins += parseInt(item.duration_minutes || 15); });
-      document.getElementById('total-playlist-duration').textContent = `${totalMins} mins`;
+      const durEl = document.getElementById('total-playlist-duration');
+      if (durEl) durEl.textContent = `${totalMins} mins`;
 
       items.forEach((item, idx) => {
         const card = buildWidgetCard(item, idx, items.length);
@@ -1280,7 +1286,8 @@ async function loadTelemetry() {
       const name = sel ? sel.value : '';
       if (!holder) return;
       holder.innerHTML = '';
-      const schema = DS_SCHEMAS[name] || [];
+      let schema = DS_SCHEMAS[name] || [];
+      if (schema && !Array.isArray(schema)) schema = schema.fields || [];
       if (schema.length) {
         const box = document.createElement('div');
         box.className = 'space-y-2 border-t border-slate-800 pt-3 mt-1';
@@ -1302,7 +1309,9 @@ async function loadTelemetry() {
 
       // Collect settings fields.
       const settings = {};
-      (DS_SCHEMAS[sel.value] || []).forEach(f => {
+      let _sch = DS_SCHEMAS[sel.value] || [];
+      if (_sch && !Array.isArray(_sch)) _sch = _sch.fields || [];
+      _sch.forEach(f => {
         const el = document.getElementById('ds_set_' + f.name);
         if (!el) return;
         if (f.type && f.type.kind === 'boolean') settings[f.name] = el.checked;

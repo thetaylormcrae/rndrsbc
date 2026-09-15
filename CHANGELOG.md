@@ -2,6 +2,17 @@
 
 <!-- version list -->
 
+## v0.22.5 (2026-09-14)
+
+### Bug Fixes
+
+- **web**: restore playlist editor on dashboard (add-widget dropdown, widget cards, duration bar) lost in the v0.22.4 template migration
+- **web**: normalize dev-studio widget schemas to field lists; preview and settings panel render again
+- **web**: playlists page renders its editor independently of dashboard-only DOM ids
+- **web**: mobile nav — hamburger and tab bar no longer both render; hamburger toggles the mobile menu
+- **web**: added `/dashboard` URL alias
+
+
 ## v0.22.4 (2026-09-15)
 
 ### Bug Fixes

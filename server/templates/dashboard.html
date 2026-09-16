@@ -175,6 +175,7 @@
 
 {% block init %}
 (async () => {
-  await checkAuthStatus(); await loadStatus(); if (isAuthenticated) { try { renderPlaylistTabs(); renderPlaylist(); } catch (e) {} }
+  if (typeof checkAuthStatus !== 'function') { document.getElementById('auth-lock')?.classList.remove('hidden'); return; }
+  await checkAuthStatus(); const lock = document.getElementById('auth-lock'); if (isAuthenticated) { lock.classList.add('hidden'); await loadStatus(); try { renderPlaylistTabs(); renderPlaylist(); } catch (e) {} } else { lock.classList.remove('hidden'); }
 })();
 {% endblock %}

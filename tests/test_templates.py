@@ -131,7 +131,8 @@ def test_mega_script_served_once_via_static(name):
     """The 56KB shared app.js must be referenced exactly once via /static/app.js
     and never inlined into a page (the old builder shipped it twice per page)."""
     content = _render(name)
-    assert content.count('src="/static/app.js"') == 1, f"{name} must reference /static/app.js exactly once"
+    assert content.count('src="/static/app.js') == 1, f"{name} must reference /static/app.js exactly once"
+    assert '/static/app.js?v=' in content, f"{name} must version the app.js URL for cache busting"
     raw = _load_raw(name)
     for page in PAGES:
         if page == "base.html":

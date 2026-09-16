@@ -103,6 +103,10 @@ let currentConfig = null;
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({password: p1})
         });
+        if (loginRes.ok) {
+          try { const ld = await loginRes.json();
+            if (ld.csrf_token) window.__CSRF__ = ld.csrf_token; } catch (e) {}
+        }
         hideLoginModal();
         await checkAuthStatus();
         await loadStatus();
@@ -135,6 +139,8 @@ let currentConfig = null;
       });
 
       if (res.ok) {
+        try { const ld = await res.json();
+          if (ld.csrf_token) window.__CSRF__ = ld.csrf_token; } catch (e) {}
         hideLoginModal();
         await checkAuthStatus();
         await loadStatus();
@@ -1012,6 +1018,15 @@ let currentConfig = null;
 
       if (res.status === 401) {
         showLoginModal();
+        return;
+      }
+
+      if (!res.ok) {
+        let msg = 'Save failed (' + res.status + ')';
+        try { const d = await res.json(); if (d.error) msg = d.error; } catch (e) {}
+        const err = document.getElementById('save-error');
+        if (err) { err.textContent = msg; err.classList.remove('hidden'); }
+        else { alert(msg); }
         return;
       }
 

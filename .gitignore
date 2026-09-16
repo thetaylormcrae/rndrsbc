@@ -26,3 +26,5 @@ __pycache__/
 /vendor/deps/*.tar.gz
 /vendor/deps/*.zip
 server/templates/.build_parts.json
+node_modules/
+e2e_tmp.js

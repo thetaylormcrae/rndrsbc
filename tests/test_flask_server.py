@@ -206,3 +206,28 @@ def test_bearer_issue_without_data_dir(monkeypatch, tmp_path):
     assert token.startswith("rndr_")
     assert missing.exists()              # dir auto-created
     assert token in sec.bearer_tokens()
+
+
+class TestCsrfRotationOnLogin:
+    """Regression: login_session() rotates the CSRF token but the browser kept
+    the pre-login token, so every save after an in-page login got a silent 403."""
+
+    def test_save_after_login_requires_fresh_token(self, client):
+        c, _, _, _ = client
+        c.post("/api/setup", json={"password": "correcthorse"})
+        c.get("/logout-fix")  # drop the auto-login session
+        # Fresh visitor: page renders with token A (unauthenticated render).
+        page_tok = _csrf(c)
+        r = c.post("/api/auth/login", json={"password": "correcthorse"})
+        assert r.status_code == 200
+        new_tok = r.get_json()["csrf_token"]
+        # The old token must now be invalid...
+        assert page_tok != new_tok
+        r = c.post("/api/config", json={"device": {"name": "x"}},
+                   headers={"X-CSRF-Token": page_tok})
+        assert r.status_code == 403
+        # ...and the login response's token must work.
+        r = c.post("/api/config", json={"device": {"name": "Studio Display"}},
+                   headers={"X-CSRF-Token": new_tok})
+        assert r.status_code == 200
+        assert c.get("/api/config").get_json()["device"]["name"] == "Studio Display"

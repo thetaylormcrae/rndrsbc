@@ -89,7 +89,14 @@ def page(path):
         return jsonify(error="Not found"), 404
     nav = [(href, label, _TPL_TO_PATH[tpl] == href) for href, label in NAV_LINKS]
     html = render_template(tpl, NAV_LINKS=nav)
-    return Response(_inject_csrf_bootstrap(html), mimetype="text/html")
+    resp = Response(_inject_csrf_bootstrap(html), mimetype="text/html")
+    # HTML pages must never be served from cache: a stale page pairs an old
+    # init script with a new/missing app.js and can present a fake editable
+    # form (HTML defaults) over an expired session -> silent 401 on save.
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    return resp
 
 
 @bp.route("/favicon.ico")

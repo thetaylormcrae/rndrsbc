@@ -167,6 +167,7 @@
 
 {% block init %}
 (async () => {
+  if (typeof checkAuthStatus !== 'function') { document.getElementById('auth-lock')?.classList.remove('hidden'); return; }
   await checkAuthStatus(); const lock = document.getElementById('auth-lock'); if (isAuthenticated) { lock.classList.add('hidden'); await loadStatus(); try { updateHardwareSettings(); updateQuietHoursSettings(); updateDeviceSettings(); } catch (e) {} } else { lock.classList.remove('hidden'); } if (!setupRequired) buildTimezoneSelect();
 })();
 {% endblock %}

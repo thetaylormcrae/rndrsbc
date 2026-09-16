@@ -27,6 +27,8 @@ def create_app(scheduler=None, secret_key: str | None = None) -> Flask:
     app = Flask("rndrsbc",
                 template_folder=TEMPLATES,
                 static_folder=None)  # assets served explicitly, with traversal guard
+    from core import __version__ as app_version
+    app.jinja_env.globals["app_version"] = app_version
 
     # Secret key: env-provided or a per-boot ephemeral key (sessions are
     # cookie-signed only; restarting invalidates sessions, which is safe and

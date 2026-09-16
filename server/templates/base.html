@@ -167,25 +167,11 @@
 <!-- MODALS END -->
 
   <script>
-tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: '#e65c00',
-            darkBg: '#090d16',
-            darkCard: '#131b2e'
-          }
-        }
-      }
-    }
-  </script>
-  <script>
     document.getElementById('nav-toggle')?.addEventListener('click', () => {
       document.getElementById('mobile-nav')?.classList.toggle('hidden');
     });
   </script>
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v={{ app_version }}"></script>
   <script>
 {% block init %}{% endblock %}
   </script>

@@ -1127,9 +1127,29 @@ async function loadTelemetry() {
           const s = await fetch('/api/update/apply-status');
           const st = await s.json();
           if (st.status === 'finished') {
-            el.innerHTML = st.success
-              ? '<div class="text-emerald-400">Update applied! Restarting…</div>'
-              : `<div class="text-rose-400">Update failed: ${st.error || 'unknown'}</div>`;
+            if (st.success) {
+              el.innerHTML = '<div class="text-sky-300">Update applied! Restarting service…</div>';
+              const prevResp = await fetch('/api/update/check');
+              const prevVer = (await prevResp.json()).current_version;
+              // Service is restarting — expect connection failures; retry until back.
+              for (let i = 0; i < 90; i++) {
+                await new Promise(res => setTimeout(res, 2000));
+                try {
+                  const v = await (await fetch('/api/system/version')).json();
+                  if (v.version && v.version !== prevVer) {
+                    el.innerHTML = `<div class="text-emerald-400">Update complete — now running v${v.version}.</div>`;
+                    return;
+                  }
+                  if (v.version === prevVer && i > 15) {
+                    el.innerHTML = `<div class="text-amber-400">Service is back on v${prevVer} — the upgrade may not have taken. Restart manually if needed.</div>`;
+                    return;
+                  }
+                } catch (e) { /* service down mid-restart — expected */ }
+              }
+              el.innerHTML = '<div class="text-amber-400">Service has not come back after restart — check `systemctl status rndrsbc`.</div>';
+            } else {
+              el.innerHTML = `<div class="text-rose-400">Update failed: ${st.error || 'unknown'}</div>`;
+            }
             return;
           }
           el.innerHTML = `<div class="text-sky-300">Applying update… (${i * 2}s elapsed)</div>`;

@@ -231,3 +231,28 @@ class TestCsrfRotationOnLogin:
                    headers={"X-CSRF-Token": new_tok})
         assert r.status_code == 200
         assert c.get("/api/config").get_json()["device"]["name"] == "Studio Display"
+
+
+class TestSystemVersion:
+    def test_version_endpoint_reports_installed(self, client):
+        """Regression: no /api/version route existed; the dashboard restart-
+        watcher needs a real version endpoint that reflects what's installed
+        on disk (importlib.metadata), not the in-memory module version."""
+        c, _, _, _ = client
+        r = c.get("/api/system/version")
+        assert r.status_code == 200
+        assert r.get_json()["version"] == __import__("core").__version__
+
+
+class TestApiNoStore:
+    def test_api_gets_are_not_heuristically_cached(self, client):
+        """Regression: /api/* responses had no Cache-Control, so browsers
+        heuristically cached GETs and the dashboard showed stale content
+        until a manual refresh (logi-display, 0.22.8)."""
+        c, _, _, _ = client
+        for path in ("/api/config", "/api/status"):
+            r = c.get(path)
+            if r.status_code == 200:
+                assert r.headers["Cache-Control"] == "no-cache, no-store, must-revalidate"
+                assert r.headers["Pragma"] == "no-cache"
+        # HTML and API both covered; static assets keep conditional caching.

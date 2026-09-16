@@ -575,6 +575,14 @@ def panel_clean():
         return jsonify(error=str(e)), 500
 
 
+@bp.route("/api/system/version")
+def system_version():
+    # importlib.metadata reflects what's actually installed on disk, even when
+    # this process was started with an older build (stale-process trap).
+    from rndrsbc._update import _current_version
+    return jsonify(status="ok", version=_current_version())
+
+
 @bp.route("/api/system/restart", methods=["POST"])
 @csrf_protect
 @login_required

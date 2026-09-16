@@ -58,6 +58,12 @@ def create_app(scheduler=None, secret_key: str | None = None) -> Flask:
         resp.headers.setdefault("X-Content-Type-Options", "nosniff")
         resp.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
         resp.headers.setdefault("Referrer-Policy", "no-referrer")
+        if request.path.startswith("/api/"):
+            # JSON API responses have no cache headers by default, so browsers
+            # heuristically cache GETs and dashboards show stale data until a
+            # manual refresh.
+            resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            resp.headers["Pragma"] = "no-cache"
         return resp
 
     # ---- 401 JSON for API paths (so fetch() handles it uniformly) ----

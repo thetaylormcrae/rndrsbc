@@ -171,7 +171,23 @@ def apply(dry_run: bool = False) -> int:
         paths.bootstrap_deps()
     except Exception as exc:  # noqa: BLE001
         print(f"bootstrap warning: {exc}", file=sys.stderr)
+
+    # The running process still holds the pre-upgrade code in memory. Restart
+    # the service so the new version is actually live (not just on disk).
+    # Without this, "0.22.8 installed" coexists with a 0.22.7-shaped portal:
+    # exactly the trap hit on logi-display after the 0.22.8 release.
+    if os.environ.get("RNDRSBC_SKIP_RESTART") != "1" and _is_systemd_service():
+        print("restarting service to load the new code…")
+        subprocess.run(["systemctl", "restart", "rndrsbc"], check=False)
+    elif os.environ.get("RNDRSBC_SKIP_RESTART") != "1":
+        print("warning: update applied but the running process still has the old "
+              "code in memory — restart the service to activate it", file=sys.stderr)
     return 0
+
+
+def _is_systemd_service() -> bool:
+    """True when running under the deployed systemd unit (invoked via systemctl)."""
+    return bool(os.environ.get("INVOCATION_ID")) and os.path.isdir("/run/systemd/system")
 
 
 def main(argv: list[str]) -> int:

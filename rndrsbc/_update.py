@@ -176,9 +176,16 @@ def apply(dry_run: bool = False) -> int:
     # the service so the new version is actually live (not just on disk).
     # Without this, "0.22.8 installed" coexists with a 0.22.7-shaped portal:
     # exactly the trap hit on logi-display after the 0.22.8 release.
+    # The restart is detached with a short delay so this process survives long
+    # enough to record its result: when triggered from the web dashboard, the
+    # apply-status write must land BEFORE systemd kills us, or the dashboard
+    # would poll 'in-progress' forever.
     if os.environ.get("RNDRSBC_SKIP_RESTART") != "1" and _is_systemd_service():
-        print("restarting service to load the new code…")
-        subprocess.run(["systemctl", "restart", "rndrsbc"], check=False)
+        print("restarting service in 3 seconds to load the new code…")
+        subprocess.Popen(
+            ["sh", "-c", "sleep 3; exec systemctl restart rndrsbc"],
+            start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
     elif os.environ.get("RNDRSBC_SKIP_RESTART") != "1":
         print("warning: update applied but the running process still has the old "
               "code in memory — restart the service to activate it", file=sys.stderr)

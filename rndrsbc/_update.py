@@ -14,6 +14,7 @@ Modes
 (no flags)   Upgrade in place and re-bootstrap.
 """
 
+import shlex
 import json
 import os
 import subprocess
@@ -180,16 +181,55 @@ def apply(dry_run: bool = False) -> int:
     # enough to record its result: when triggered from the web dashboard, the
     # apply-status write must land BEFORE systemd kills us, or the dashboard
     # would poll 'in-progress' forever.
-    if os.environ.get("RNDRSBC_SKIP_RESTART") != "1" and _is_systemd_service():
-        print("restarting service in 3 seconds to load the new code…")
+    unit = _service_unit()
+    if os.environ.get("RNDRSBC_SKIP_RESTART") != "1" and _is_systemd_service() and unit:
+        print(f"restarting service in 3 seconds to load the new code…")
         subprocess.Popen(
-            ["sh", "-c", "sleep 3; exec systemctl restart rndrsbc"],
+            ["sh", "-c", f"sleep 3; exec systemctl restart {shlex.quote(unit)}"],
             start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         )
+    elif os.environ.get("RNDRSBC_SKIP_RESTART") != "1" and _is_systemd_service():
+        print("warning: could not identify the systemd unit managing this process; "
+              "restart the service manually to activate the new code", file=sys.stderr)
     elif os.environ.get("RNDRSBC_SKIP_RESTART") != "1":
         print("warning: update applied but the running process still has the old "
               "code in memory — restart the service to activate it", file=sys.stderr)
     return 0
+
+
+def _service_unit() -> str | None:
+    """Name of the systemd unit currently running this process, if any.
+
+    Deployments use a templated unit (rndrsbc@<user>.service), so the unit
+    name cannot be hardcoded. Resolution order:
+      1. RNDRSBC_UNIT env override (set in the unit's Environment= line)
+      2. the unit this process was invoked by (requires systemd >= 240 for
+         INVOCATION_ID to be exported; we map id -> unit via list-units)
+    """
+    override = os.environ.get("RNDRSBC_UNIT")
+    if override:
+        return override
+    inv = os.environ.get("INVOCATION_ID")
+    if not inv:
+        return None
+    try:
+        out = subprocess.run(
+            ["systemctl", "list-units", "--no-legend", "--no-pager",
+             "rndrsbc*"],
+            capture_output=True, text=True, timeout=10, check=False,
+        ).stdout
+    except Exception:
+        return None
+    for line in out.splitlines():
+        parts = line.split()
+        if len(parts) >= 4 and parts[3] == inv:
+            return parts[0]
+    # Fallback: exactly one running rndrsbc* unit
+    running = [line.split()[0] for line in out.splitlines()
+               if line.split()[:2] and line.split()[1] == "active"]
+    if len(running) == 1:
+        return running[0]
+    return None
 
 
 def _is_systemd_service() -> bool:

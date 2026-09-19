@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.22.16 (2026-09-19)
+
+### Bug Fixes
+
+- Rebuild timezone select before loadStatus on settings page
+  ([`bef6472`](https://github.com/thetaylormcrae/rndrsbc/commit/bef647294f80e32e5dc2036c7b72401fd8361265))
+
+
 ## v0.22.15 (2026-09-19)
 
 ### Bug Fixes

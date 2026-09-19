@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.22.15 (2026-09-19)
+
+### Bug Fixes
+
+- Add 'transition' to schema allow-list (scheduler reads it top-level)
+  ([`0b49bec`](https://github.com/thetaylormcrae/rndrsbc/commit/0b49bec626af5b85e6619310653f8550a151e67b))
+
+
 ## v0.22.14 (2026-09-19)
 
 ### Bug Fixes

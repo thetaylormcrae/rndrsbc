@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.22.13 (2026-09-19)
+
+### Bug Fixes
+
+- **ota**: Restart the actual templated unit (rndrsbc@<user>), not hardcoded 'rndrsbc'
+  ([`441799d`](https://github.com/thetaylormcrae/rndrsbc/commit/441799d3231c9592f38fe45609319fc778b24bc7))
+
+
 ## v0.22.12 (2026-09-19)
 
 ### Bug Fixes

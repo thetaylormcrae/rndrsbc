@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.22.12 (2026-09-19)
+
+### Bug Fixes
+
+- **web**: Guard DOM access on pages lacking settings/telemetry elements
+  ([`4bd8896`](https://github.com/thetaylormcrae/rndrsbc/commit/4bd88960496a6cad341bcba4d5413abb4156a9ca))
+
+
 ## v0.22.11 (2026-09-18)
 
 ### Bug Fixes

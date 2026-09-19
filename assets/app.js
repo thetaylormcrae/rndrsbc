@@ -242,26 +242,29 @@ let currentConfig = null;
 
         selectedPlaylistKey = currentConfig.active_playlist || Object.keys(currentConfig.playlists)[0] || "main";
 
+        const setV = (id, v) => { const el = document.getElementById(id); if (el) el.value = v; };
+        const setChecked = (id, v) => { const el = document.getElementById(id); if (el) el.checked = v; };
+
         if (currentConfig.display) {
-          document.getElementById('cfg-driver').value = currentConfig.display.driver || 'virtual';
-          document.getElementById('cfg-model').value = currentConfig.display.model || 'epd7in3f';
-          document.getElementById('cfg-orient').value = currentConfig.display.orientation || 0;
-          document.getElementById('cfg-saturation').value = currentConfig.display.saturation ?? 0.5;
+          setV('cfg-driver', currentConfig.display.driver || 'virtual');
+          setV('cfg-model', currentConfig.display.model || 'epd7in3f');
+          setV('cfg-orient', currentConfig.display.orientation || 0);
+          setV('cfg-saturation', currentConfig.display.saturation ?? 0.5);
         }
 
         if (currentConfig.quiet_hours) {
-          document.getElementById('cfg-qh-enabled').checked = !!currentConfig.quiet_hours.enabled;
-          document.getElementById('cfg-qh-start').value = currentConfig.quiet_hours.start || '23:00';
-          document.getElementById('cfg-qh-end').value = currentConfig.quiet_hours.end || '06:00';
+          setChecked('cfg-qh-enabled', !!currentConfig.quiet_hours.enabled);
+          setV('cfg-qh-start', currentConfig.quiet_hours.start || '23:00');
+          setV('cfg-qh-end', currentConfig.quiet_hours.end || '06:00');
         }
 
         if (currentConfig.device) {
-          document.getElementById('cfg-timezone').value = currentConfig.device.timezone || 'America/New_York';
-          document.getElementById('cfg-device-name').value = currentConfig.device.name || 'rndrSBC Node';
+          setV('cfg-timezone', currentConfig.device.timezone || 'America/New_York');
+          setV('cfg-device-name', currentConfig.device.name || 'rndrSBC Node');
         }
-        document.getElementById('cfg-transition').value = currentConfig.transition || 'cut';
-        document.getElementById('cfg-language').value = (currentConfig.language || 'en').split('-')[0];
-        document.getElementById('cfg-refresh-mode').value = currentConfig.refresh_mode || 'auto';
+        setV('cfg-transition', currentConfig.transition || 'cut');
+        setV('cfg-language', (currentConfig.language || 'en').split('-')[0]);
+        setV('cfg-refresh-mode', currentConfig.refresh_mode || 'auto');
 
         if (document.getElementById('playlist-tabs') || document.getElementById('playlist-container')) {
           renderPlaylistTabs();
@@ -972,12 +975,24 @@ let currentConfig = null;
       }
     }
 
+    // Return the element for a cfg-* field id, or null when the current page
+    // has no such input (app.js is loaded on every page, but the settings
+    // inputs only exist on the settings page). Callers must not assume the
+    // element exists.
+    function cfgEl(id) {
+      return document.getElementById(id);
+    }
+
     function updateHardwareSettings() {
       if (!currentConfig.display) currentConfig.display = {};
-      currentConfig.display.driver = document.getElementById('cfg-driver').value;
-      currentConfig.display.model = document.getElementById('cfg-model').value;
-      currentConfig.display.orientation = parseInt(document.getElementById('cfg-orient').value);
-      currentConfig.display.saturation = parseFloat(document.getElementById('cfg-saturation').value) || 0.5;
+      const d = document.getElementById('cfg-driver');
+      const m = document.getElementById('cfg-model');
+      const o = document.getElementById('cfg-orient');
+      const sat = document.getElementById('cfg-saturation');
+      if (d) currentConfig.display.driver = d.value;
+      if (m) currentConfig.display.model = m.value;
+      if (o) currentConfig.display.orientation = parseInt(o.value);
+      if (sat) currentConfig.display.saturation = parseFloat(sat.value) || 0.5;
       // Drop stale fixed resolution: the server re-derives width/height from
       // the selected panel model (DISPLAY_MODELS) so the screen size actually
       // changes. Keeping stale width/height would silently win over the model
@@ -988,19 +1003,27 @@ let currentConfig = null;
 
     function updateQuietHoursSettings() {
       if (!currentConfig.quiet_hours) currentConfig.quiet_hours = {};
-      currentConfig.quiet_hours.enabled = document.getElementById('cfg-qh-enabled').checked;
-      currentConfig.quiet_hours.start = document.getElementById('cfg-qh-start').value;
-      currentConfig.quiet_hours.end = document.getElementById('cfg-qh-end').value;
+      const en = document.getElementById('cfg-qh-enabled');
+      const st = document.getElementById('cfg-qh-start');
+      const en2 = document.getElementById('cfg-qh-end');
+      if (en) currentConfig.quiet_hours.enabled = en.checked;
+      if (st) currentConfig.quiet_hours.start = st.value;
+      if (en2) currentConfig.quiet_hours.end = en2.value;
       currentConfig.quiet_hours.mode = "suspend";
     }
 
     function updateDeviceSettings() {
       if (!currentConfig.device) currentConfig.device = {};
-      currentConfig.device.timezone = document.getElementById('cfg-timezone').value;
-      currentConfig.device.name = document.getElementById('cfg-device-name').value || 'rndrSBC Node';
-      currentConfig.transition = document.getElementById('cfg-transition').value || 'cut';
-      currentConfig.language = document.getElementById('cfg-language').value || 'en';
-      currentConfig.refresh_mode = document.getElementById('cfg-refresh-mode').value || 'auto';
+      const tz = document.getElementById('cfg-timezone');
+      const nm = document.getElementById('cfg-device-name');
+      const tr = document.getElementById('cfg-transition');
+      const lg = document.getElementById('cfg-language');
+      const rm = document.getElementById('cfg-refresh-mode');
+      if (tz) currentConfig.device.timezone = tz.value;
+      if (nm) currentConfig.device.name = nm.value || 'rndrSBC Node';
+      if (tr) currentConfig.transition = tr.value || 'cut';
+      if (lg) currentConfig.language = lg.value || 'en';
+      if (rm) currentConfig.refresh_mode = rm.value || 'auto';
     }
 
     async function saveAndApply() {
@@ -1037,7 +1060,7 @@ let currentConfig = null;
 
     async function refreshDisplayNow() {
       const res = await spinButton(document.getElementById('btn-refresh'),
-        fetch('/api/refresh', { method: 'POST' }),
+        fetch('/api/panel/refresh', { method: 'POST' }),
         'Refreshing');
       if (res.status === 401) {
         showLoginModal();

@@ -1004,15 +1004,18 @@ let currentConfig = null;
     function updateQuietHoursSettings() {
       if (!currentConfig.quiet_hours) currentConfig.quiet_hours = {};
       const en = document.getElementById('cfg-qh-enabled');
+      if (!en) return; // page has no quiet-hours inputs
       const st = document.getElementById('cfg-qh-start');
       const en2 = document.getElementById('cfg-qh-end');
-      if (en) currentConfig.quiet_hours.enabled = en.checked;
+      currentConfig.quiet_hours.enabled = en.checked;
       if (st) currentConfig.quiet_hours.start = st.value;
       if (en2) currentConfig.quiet_hours.end = en2.value;
       currentConfig.quiet_hours.mode = "suspend";
     }
 
     function updateDeviceSettings() {
+      const deviceName = document.getElementById('cfg-device-name');
+      if (!deviceName) return; // page has no settings inputs; keep currentConfig as-is
       if (!currentConfig.device) currentConfig.device = {};
       const tz = document.getElementById('cfg-timezone');
       const nm = document.getElementById('cfg-device-name');
@@ -1068,8 +1071,9 @@ let currentConfig = null;
       }
       setTimeout(() => {
         const img = document.getElementById('live-screen-img');
-        img.src = '/api/screen.png?t=' + Date.now();
-        document.getElementById('mirror-timestamp').textContent = 'Refreshed: ' + new Date().toLocaleTimeString();
+        if (img) img.src = '/api/screen.png?t=' + Date.now();
+        const ts = document.getElementById('mirror-timestamp');
+        if (ts) ts.textContent = 'Refreshed: ' + new Date().toLocaleTimeString();
       }, 1000);
     }
 
@@ -1097,6 +1101,7 @@ async function loadTelemetry() {
         const r = await fetch('/api/telemetry');
         const t = await r.json();
         const el = document.getElementById('telemetry-content');
+        if (!el) return;
         if (!r.ok || t.error) {
           el.innerHTML = `<div class="text-amber-400">Sign in to view device health${t.detail ? ' (HTTP ' + r.status + ': ' + t.detail + ')' : (t.error ? ' (' + t.error + ')' : (r.ok ? '' : ' (HTTP ' + r.status + ')'))}</div>`;
           return;

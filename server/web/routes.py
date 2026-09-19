@@ -439,12 +439,15 @@ def config_get():
 @csrf_protect
 @login_required
 def config_post():
+    logger.info("POST /api/config: session=%s bytes=%d csrf_ok=1",
+                session.get("user_id") or session.get("setup_user"), request.content_length or 0)
     partial = request.get_json(silent=True)
     if partial is None:
         return jsonify(error="Invalid JSON"), 400
     try:
         merged, warnings = model.update_config(partial, scheduler=current_app.config.get("SCHEDULER"))
     except model.ConfigUpdateError as e:
+        logger.warning("POST /api/config rejected: %s", e)
         return jsonify(error=str(e)), 400
     return jsonify(status="updated", warnings=warnings, config=model.sanitize_outbound(merged))
 

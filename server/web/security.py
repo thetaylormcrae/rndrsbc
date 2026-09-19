@@ -212,6 +212,9 @@ def csrf_protect(fn):
             if getattr(fn, "_csrf_exempt", False):
                 return fn(*args, **kwargs)
             if not verify_csrf():
+                logger.warning("CSRF rejected on %s: session=%s header=%s",
+                               request.path, session.get("user_id") or session.get("setup_user"),
+                               (request.headers.get("X-CSRF-Token") or "")[:8])
                 return jsonify(error="CSRF token missing or invalid"), 403
         return fn(*args, **kwargs)
     return wrapper

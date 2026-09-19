@@ -59,6 +59,7 @@ def validate_config(raw: Any, self_heal: bool = False) -> Tuple[Dict[str, Any], 
     _known = {
         "display", "device", "active_playlist", "playlists", "_comment",
         "schema_version", "quiet_hours", "app", "rotation", "refresh_mode",
+        "transition",
         "admin_password_hash", "migrated_at", "buttons", "wifi", "weather",
         "language", "secrets", "api_keys",
     }

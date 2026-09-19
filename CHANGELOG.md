@@ -2,6 +2,12 @@
 
 <!-- version list -->
 
+## v0.22.11 (2026-09-18)
+
+### Bug Fixes
+
+- **web**: Save & Apply no longer throws on pages without settings inputs (`cfg-*` DOM access is now guarded); Refresh Screen button calls the renamed `/api/panel/refresh` (old `/api/refresh` returned 405)
+
 ## v0.22.5 (2026-09-14)
 
 ### Bug Fixes

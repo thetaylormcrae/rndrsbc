@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.22.14 (2026-09-19)
+
+### Bug Fixes
+
+- **web**: Audit-log POST /api/config and CSRF rejections
+  ([`e8d2827`](https://github.com/thetaylormcrae/rndrsbc/commit/e8d2827896e5df382999ef08c8760a59f679f8ef))
+
+
 ## v0.22.13 (2026-09-19)
 
 ### Bug Fixes

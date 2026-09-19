@@ -156,7 +156,9 @@ let currentConfig = null;
         } else if (window.location.pathname === '/widgets') {
           try { devStudioInit(); } catch (e) {}
         } else if (window.location.pathname === '/settings') {
-          try { buildTimezoneSelect(); updateHardwareSettings(); updateQuietHoursSettings(); updateDeviceSettings(); } catch (e) {}
+          // Rebuild the select FIRST, then re-apply config values — building it
+          // after loadStatus() resets the dropdown to its first option.
+          try { buildTimezoneSelect(); await loadStatus(); } catch (e) {}
         } else if (window.location.pathname === '/photos') {
           try { loadPhotos(); } catch (e) {}
         } else if (window.location.pathname === '/system') {

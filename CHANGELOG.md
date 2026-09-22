@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.23.0 (2026-09-22)
+
+### Features
+
+- Persist telemetry counters across restarts; expose real panel health in /api/telemetry and Device
+  Health panel
+  ([`6f1975d`](https://github.com/thetaylormcrae/rndrsbc/commit/6f1975d2a0e7787bee353d7048638bfb7dc3b49d))
+
+
 ## v0.22.19 (2026-09-22)
 
 ### Bug Fixes

@@ -877,6 +877,7 @@ let currentConfig = null;
     function initWeatherMap(idx, lat, lon) {
       const mapDiv = document.getElementById(`wmap-${idx}`);
       if (!mapDiv || weatherMaps[idx]) return;
+      if (typeof L === 'undefined' || !L.map || !L.tileLayer) return; // Leaflet CDN unavailable — skip, retry on next interval
 
       const map = L.map(mapDiv, { zoomControl: false, attributionControl: false }).setView([lat, lon], 10);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(map);

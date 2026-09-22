@@ -113,7 +113,12 @@ def _static_asset(rel: str):
     target = os.path.realpath(os.path.join(assets, rel))
     if not target.startswith(assets + os.sep) or not os.path.isfile(target):
         return None
-    return send_file(target)
+    # Static assets must never be heuristically cached: a stale app.js pairs
+    # old client logic with a new server and makes the UI silently out of
+    # sync with what the APIs accept ("APIs work, browser doesn't").
+    resp = send_file(target)
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    return resp
 
 
 def _inject_csrf_bootstrap(html: str) -> str:

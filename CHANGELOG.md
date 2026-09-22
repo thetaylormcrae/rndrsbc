@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.22.17 (2026-09-22)
+
+### Bug Fixes
+
+- **web**: Send no-store on static assets
+  ([`a58f70d`](https://github.com/thetaylormcrae/rndrsbc/commit/a58f70d03730864f8eef1ba8a66eb6783cbdd444))
+
+
 ## v0.22.16 (2026-09-19)
 
 ### Bug Fixes

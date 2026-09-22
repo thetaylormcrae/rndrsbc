@@ -1112,11 +1112,18 @@ async function loadTelemetry() {
         }
         const health = t.health === 'healthy' ? 'text-emerald-400' : 'text-rose-400';
         const healthTxt = t.health || 'unknown';
+        const panel = t.panel || {};
+        const panelPct = panel.panel_health_percent;
+        const panelColor = panelPct == null ? '' : (panelPct >= 50 ? 'text-emerald-400' : (panelPct >= 15 ? 'text-amber-400' : 'text-rose-400'));
+        const cadence = { standard: 'Standard', conservative: 'Conservative', end_of_life: 'End of life' }[panel.refresh_cadence] || null;
         el.innerHTML =
           `<div>Health: <strong class="${health}">${healthTxt}</strong></div>` +
           `<div>Uptime: ${t.uptime_human || '—'}</div>` +
           `<div>Renders: ${t.render_count ?? '—'} · Errors: ${t.error_count ?? '—'}</div>` +
           `<div>Last render: ${t.last_render_duration_ms != null ? t.last_render_duration_ms + 'ms' : '—'}</div>` +
+          (panelPct != null
+            ? `<div>Panel health: <strong class="${panelColor}">${panelPct.toFixed(1)}%</strong> · ${panel.cumulative_full_refreshes ?? 0} full / ${panel.cumulative_partial_refreshes ?? 0} partial refreshes${cadence ? ` · ${cadence} cadence` : ''}</div>`
+            : '') +
           (t.last_error ? `<div class="text-rose-400">⚠ ${t.last_error}</div>` : '');
       } catch (e) { document.getElementById('telemetry-content').innerHTML = '<div class="text-amber-400">Monitoring unavailable: ' + (e && e.message ? e.message : 'network error') + '</div>'; }
     }

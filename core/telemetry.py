@@ -13,9 +13,17 @@ from typing import Dict, Any, List
 
 logger = logging.getLogger("rndrSBC.telemetry")
 
+_STATE_FILE = "telemetry.json"
+_PERSIST_FIELDS = ("render_count", "error_count", "last_render_duration_ms", "last_render_ts",
+                   "last_error_message", "last_error_ts", "consecutive_failures")
+
 
 class SystemTelemetry:
-    """Singleton engine for operational metrics, health checks, and alerts."""
+    """Singleton engine for operational metrics, health checks, and alerts.
+
+    Cumulative counters persist across restarts to ``~/.rndrsbc/telemetry.json``
+    so refresh counts survive OTA updates and service restarts.
+    """
 
     def __init__(self):
         self.start_time = time.time()
@@ -29,6 +37,38 @@ class SystemTelemetry:
         self.alert_webhook_url = None
         self.recent_events: List[Dict[str, Any]] = []
         self._max_events = 50
+        self._load_persisted()
+
+    def _state_path(self):
+        try:
+            from core import paths
+            return paths.resolve(_STATE_FILE)
+        except Exception:
+            return os.path.join(os.path.expanduser("~"), ".rndrsbc", _STATE_FILE)
+
+    def _load_persisted(self):
+        try:
+            with open(self._state_path(), "r", encoding="utf-8") as f:
+                data = json.load(f)
+            for field in _PERSIST_FIELDS:
+                if field in data:
+                    setattr(self, field, data[field])
+            logger.info("Telemetry counters restored (renders=%s errors=%s)", self.render_count, self.error_count)
+        except FileNotFoundError:
+            pass
+        except Exception as exc:
+            logger.warning("Telemetry state unreadable; starting fresh: %s", exc)
+
+    def _persist(self):
+        try:
+            data = {field: getattr(self, field) for field in _PERSIST_FIELDS}
+            tmp = self._state_path() + ".tmp"
+            os.makedirs(os.path.dirname(tmp), exist_ok=True)
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+            os.replace(tmp, self._state_path())
+        except Exception as exc:
+            logger.warning("Telemetry persist failed: %s", exc)
 
     def record_render_success(self, duration_ms: float, widget_name: str):
         self.render_count += 1
@@ -36,6 +76,7 @@ class SystemTelemetry:
         self.last_render_ts = time.time()
         self.consecutive_failures = 0
         self._add_event("render_success", f"Rendered '{widget_name}' in {duration_ms:.1f}ms")
+        self._persist()
 
     def record_render_error(self, widget_name: str, error_str: str):
         self.error_count += 1
@@ -43,6 +84,7 @@ class SystemTelemetry:
         self.last_error_ts = time.time()
         self.consecutive_failures += 1
         self._add_event("render_error", self.last_error_message)
+        self._persist()
 
         if self.consecutive_failures in (3, 5, 10):
             self.send_alert(f"⚠️ [rndrSBC Alert] {self.consecutive_failures} consecutive render failures! Last error: {self.last_error_message}")

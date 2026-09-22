@@ -320,7 +320,13 @@ def onboarding_wifi():
 @bp.route("/api/telemetry")
 @login_required
 def telemetry():
-    return jsonify(TELEMETRY.get_status())
+    status = TELEMETRY.get_status()
+    try:
+        from core.panel_health import get_health
+        status["panel"] = get_health().snapshot()
+    except Exception as exc:
+        logger.warning("panel health unavailable: %s", exc)
+    return jsonify(status)
 
 
 @bp.route("/api/update/check")

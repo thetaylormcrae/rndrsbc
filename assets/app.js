@@ -318,6 +318,7 @@ let currentConfig = null;
 
     function renderPlaylistTabs() {
       const tabsEl = document.getElementById('playlist-tabs');
+      if (!tabsEl) return; // playlists page: tabs live on dashboard.html only
       tabsEl.innerHTML = '';
       const playlists = currentConfig.playlists || {};
       const activeKey = currentConfig.active_playlist || 'main';

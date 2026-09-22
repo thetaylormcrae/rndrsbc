@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.22.19 (2026-09-22)
+
+### Bug Fixes
+
+- **web**: Guard initWeatherMap when Leaflet CDN unavailable
+  ([`80b51c5`](https://github.com/thetaylormcrae/rndrsbc/commit/80b51c5f3fe7467322e7c26d990adeaab842e565))
+
+
 ## v0.22.18 (2026-09-22)
 
 ### Bug Fixes

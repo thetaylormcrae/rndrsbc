@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v0.22.18 (2026-09-22)
+
+### Bug Fixes
+
+- **playlists**: Guard renderPlaylistTabs when tabs markup absent; playlists page renders widget
+  cards again
+  ([`276fddc`](https://github.com/thetaylormcrae/rndrsbc/commit/276fddcb243193760f425d4e3ddc3ff2973f5e65))
+
+
 ## v0.22.17 (2026-09-22)
 
 ### Bug Fixes

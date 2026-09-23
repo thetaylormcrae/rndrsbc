@@ -565,6 +565,8 @@ def screen_png():
 @csrf_protect
 @login_required
 def panel_refresh():
+    logger.info("POST /api/panel/refresh: session=%s csrf_ok=1",
+                session.get("user_id") or session.get("setup_user"))
     sched = current_app.config.get("SCHEDULER")
     if sched:
         try:
@@ -578,6 +580,8 @@ def panel_refresh():
 @csrf_protect
 @login_required
 def panel_clean():
+    logger.info("POST /api/panel/clean: session=%s csrf_ok=1",
+                session.get("user_id") or session.get("setup_user"))
     try:
         from core.panel_health import get_health
         get_health().record_full_refresh()

@@ -56,6 +56,8 @@ def load_config(path: str | None = None) -> dict:
 def save_config(cfg: dict, path: str | None = None) -> None:
     p = path or CONFIG_PATH
     tmp = p + ".tmp"
+    from pathlib import Path
+    Path(p).parent.mkdir(parents=True, exist_ok=True)
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
     os.replace(tmp, p)

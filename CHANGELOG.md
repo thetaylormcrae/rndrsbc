@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.24.2 (2026-09-23)
+
+### Bug Fixes
+
+- **ui**: Config save no longer triggers panel repaint
+  ([`98aac47`](https://github.com/thetaylormcrae/rndrsbc/commit/98aac477f9abc04e21ba05d33e225e2a09b25a8f))
+
+
 ## v0.24.1 (2026-09-23)
 
 ### Bug Fixes

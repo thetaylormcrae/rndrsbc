@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.24.1 (2026-09-23)
+
+### Bug Fixes
+
+- **config**: Create config directory before atomic save
+  ([`e02be15`](https://github.com/thetaylormcrae/rndrsbc/commit/e02be157ae7741359c5884961b13e859c7484fb0))
+
+
 ## v0.24.0 (2026-09-23)
 
 ### Features

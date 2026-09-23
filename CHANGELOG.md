@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.24.0 (2026-09-23)
+
+### Features
+
+- **observability**: Audit-log panel refresh and clean endpoints
+  ([`fa511b0`](https://github.com/thetaylormcrae/rndrsbc/commit/fa511b0a4016a4685a55b606bfeec53966cfc0e9))
+
+
 ## v0.23.1 (2026-09-23)
 
 ### Bug Fixes

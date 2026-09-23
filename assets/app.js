@@ -396,6 +396,7 @@ let currentConfig = null;
       selectedPlaylistKey = Object.keys(currentConfig.playlists)[0];
       renderPlaylistTabs();
       renderPlaylist();
+      savePlaylistsQuiet();
     }
 
     function toggleAddDropdown() {
@@ -447,6 +448,7 @@ let currentConfig = null;
 
       pl.items.push(newWidget);
       renderPlaylist();
+      savePlaylistsQuiet();
     }
 
     function renderPlaylist() {
@@ -507,6 +509,7 @@ let currentConfig = null;
       const [moved] = items.splice(fromIdx, 1);
       items.splice(toIdx, 0, moved);
       renderPlaylist();
+      savePlaylistsQuiet();
     }
 
     function buildWidgetCard(item, idx, total) {
@@ -898,6 +901,8 @@ let currentConfig = null;
       if (!pl.items[idx].settings) pl.items[idx].settings = {};
       pl.items[idx].settings[field] = val;
 
+      savePlaylistsQuiet();
+
       const latEl = document.getElementById(`w-lat-${idx}`);
       const lonEl = document.getElementById(`w-lon-${idx}`);
       if (latEl && field === 'latitude') latEl.value = val;
@@ -960,6 +965,7 @@ let currentConfig = null;
       if (pl && pl.items[idx]) {
         if (!pl.items[idx].settings) pl.items[idx].settings = {};
         pl.items[idx].settings[field] = val;
+        savePlaylistsQuiet();
       }
     }
 
@@ -976,6 +982,7 @@ let currentConfig = null;
       if (pl && pl.items) {
         pl.items.splice(idx, 1);
         renderPlaylist();
+        savePlaylistsQuiet();
       }
     }
 
@@ -1033,18 +1040,22 @@ let currentConfig = null;
       if (rm) currentConfig.refresh_mode = rm.value || 'auto';
     }
 
-    async function saveAndApply() {
+    async function saveAndApply(opts) {
+      const refresh = !(opts && opts.noRefresh);
+      const silent = opts && opts.silent;
       updateHardwareSettings();
       updateQuietHoursSettings();
       updateDeviceSettings();
 
-      const res = await spinButton(document.getElementById('btn-apply'),
-        fetch('/api/config', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(currentConfig)
-        }),
-        'Saving');
+      const doSave = () => fetch('/api/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(currentConfig)
+      });
+
+      if (silent) { await doSave(); return; }
+
+      const res = await spinButton(document.getElementById('btn-apply'), doSave(), 'Saving');
 
       if (res.status === 401) {
         showLoginModal();
@@ -1060,9 +1071,18 @@ let currentConfig = null;
         return;
       }
 
-      if (res.ok) {
+      if (res.ok && refresh) {
         setTimeout(refreshDisplayNow, 500);
       }
+    }
+
+    let _plSaveTimer = null;
+    function savePlaylistsQuiet() {
+      if (_plSaveTimer) clearTimeout(_plSaveTimer);
+      _plSaveTimer = setTimeout(() => {
+        _plSaveTimer = null;
+        saveAndApply({ noRefresh: true, silent: true });
+      }, 400);
     }
 
     async function refreshDisplayNow() {

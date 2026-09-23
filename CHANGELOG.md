@@ -2,6 +2,14 @@
 
 <!-- version list -->
 
+## v0.23.1 (2026-09-23)
+
+### Bug Fixes
+
+- **ui**: Persist playlist edits immediately; stop save-forced panel refresh
+  ([`c4c885f`](https://github.com/thetaylormcrae/rndrsbc/commit/c4c885fc9791a75f8e8fecfd8b64b3f119b45a0d))
+
+
 ## v0.23.0 (2026-09-22)
 
 ### Features

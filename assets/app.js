@@ -1041,7 +1041,9 @@ let currentConfig = null;
     }
 
     async function saveAndApply(opts) {
-      const refresh = !(opts && opts.noRefresh);
+      // Saving is a data operation only: it must never trigger a hardware
+      // repaint. Panel refreshes are owned exclusively by the Refresh button
+      // (refreshDisplayNow) and the widget scheduler.
       const silent = opts && opts.silent;
       updateHardwareSettings();
       updateQuietHoursSettings();
@@ -1071,9 +1073,6 @@ let currentConfig = null;
         return;
       }
 
-      if (res.ok && refresh) {
-        setTimeout(refreshDisplayNow, 500);
-      }
     }
 
     let _plSaveTimer = null;
@@ -1081,7 +1080,7 @@ let currentConfig = null;
       if (_plSaveTimer) clearTimeout(_plSaveTimer);
       _plSaveTimer = setTimeout(() => {
         _plSaveTimer = null;
-        saveAndApply({ noRefresh: true, silent: true });
+        saveAndApply({ silent: true });
       }, 400);
     }
 
